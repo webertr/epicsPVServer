@@ -12,4 +12,8 @@ void listenTest(void);
 
 void getHTMLFile(char buffer[]);
 
+void epicsPVExample(void);
+
+void caExample(char *pvName);
+
 #endif // MYFUNCTION_H_

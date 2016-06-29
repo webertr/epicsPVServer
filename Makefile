@@ -10,21 +10,23 @@
 vpath %.c  src
 vpath %.h  include
 
+PATH1=/usr/src/epics/base-3.15.3/lib/linux-x86_64
 OUT = lib/alib.a
 CC = gcc
 ODIR = obj
 SDIR = src
-INC = -Imyfunctions.h
-LIBS = -lpthread
+INC = -Imyfunctions.h -I/usr/src/epics/base-3.15.3/include -I/usr/src/epics/base-3.15.3/include/os/Linux -I/usr/src/epics/base-3.15.3/include/compiler/gcc 
+LIBS = -lpthread -ldbCore -lca
+LIBSDIR = -L$(PATH1)
 
-_OBJS = main.o bindSocketTest.o getHTMLFile.o listenTest.o printIPAddress.o socketTest.o
+_OBJS = main.o bindSocketTest.o getHTMLFile.o listenTest.o printIPAddress.o socketTest.o epicsPVExample.o caExample.o
 OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 
 pv_server: $(OBJS)
-	$(CC) -o pv_server $(OBJS) $(LIBS)
+	$(CC) -o pv_server $(OBJS) $(INC) $(LIBSDIR) $(LIBS)
 
 $(ODIR)/%.o: $(SDIR)/%.c
-	$(CC) -c -o $@ $<
+	$(CC) -c -o $@ $< $(INC)
 
 .PHONY: clean
 

@@ -1,6 +1,6 @@
 # #objects = $(addprefix $(OBJDIR)/, bindSocketTest.o getHTMLFile.o listenTest.o main.o printIPAddress.o socketTest.o)
 
-# INCLUDEDIR = $(shell pwd)/include
+INCLUDEDIR = $(shell pwd)/include
 # SRCDIR = $(shell pwd)/src
 # OBJDIR = $(shell pwd)/obj
 # LIBS  = -lpthread
@@ -15,11 +15,11 @@ OUT = lib/alib.a
 CC = gcc
 ODIR = obj
 SDIR = src
-INC = -Imyfunctions.h -I/usr/src/epics/base-3.15.3/include -I/usr/src/epics/base-3.15.3/include/os/Linux -I/usr/src/epics/base-3.15.3/include/compiler/gcc 
-LIBS = -lpthread -ldbCore -lca
+INC = -I$(INCLUDEDIR) -I/usr/src/epics/base-3.15.3/include -I/usr/src/epics/base-3.15.3/include/os/Linux -I/usr/src/epics/base-3.15.3/include/compiler/gcc -I/usr/src/epics/base-3.15.3/src/ca/client/tools
+LIBS = -lpthread -ldbCore -lca -lCom
 LIBSDIR = -L$(PATH1)
 
-_OBJS = main.o bindSocketTest.o getHTMLFile.o listenTest.o printIPAddress.o socketTest.o epicsPVExample.o caExample.o
+_OBJS = main.o bindSocketTest.o getHTMLFile.o listenTest.o printIPAddress.o socketTest.o epicsPVExample.o caExample.o tool_lib.o caget.o
 OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 
 pv_server: $(OBJS)

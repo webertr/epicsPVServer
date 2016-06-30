@@ -1,7 +1,8 @@
 #include <stdio.h>
-#include "../include/myfunctions.h"
+#include <myfunctions.h>
 #include <pthread.h>
 #include <semaphore.h>
+
 
 /* This is our thread function.  It is like main(), but for a thread */
 void *threadFunc(void *arg)
@@ -36,6 +37,9 @@ int main(void) {
 
   caExample("fred");
   printf("main waiting for thread to terminate...\n");
+
+  pv *pvList;
+    
   pthread_join(pth,NULL);
 
   // to stop a thread:

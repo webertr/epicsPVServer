@@ -35,7 +35,7 @@
 #include <cadef.h>
 #include <epicsGetopt.h>
 
-#include "tool_lib.h"
+#include <tool_lib.h>
 
 #define VALID_DOUBLE_DIGITS 18  /* Max usable precision for a double */
 #define PEND_EVENT_SLICES 5     /* No. of pend_event slices for callback requests */
@@ -345,210 +345,246 @@ static int caget (pv *pvs, int nPvs, RequestT request, OutputT format,
 }
 
 
-
-/*+**************************************************************************
- *
- * Function:	main
- *
- * Description:	caget main()
- * 		Evaluate command line options, set up CA, connect the
- * 		channels, collect and print the data as requested
- *
- * Arg(s) In:	[options] <pv-name> ...
- *
- * Arg(s) Out:	none
- *
- * Return(s):	Standard return code (0=success, 1=error)
- *
- **************************************************************************-*/
 
-static void complainIfNotPlainAndSet (OutputT *current, const OutputT requested)
-{
-    if (*current != plain) 
-        fprintf(stderr,
-                "Options t,d,a are mutually exclusive. "
-                "('caget -h' for help.)\n");
-    *current = requested;
+void cagetFuZE(char *argv, int nPvs) {
+
+  /*   /\* Start up Channel Access *\/ */
+
+  int n = 0;
+  result = ca_context_create(ca_disable_preemptive_callback);
+  if (result != ECA_NORMAL) {
+    fprintf(stderr, "CA error %s occurred while trying "
+	    "to start channel access.\n", ca_message(result));
+    return 1;
+  }
+  /* Allocate PV structure array */
+
+  pvs = calloc (nPvs, sizeof(pv));
+  if (!pvs)
+    {
+      fprintf(stderr, "Memory allocation for channel structures failed.\n");
+      return 1;
+    }
+  /* Connect channels */
+
+  for (n = 0; optind < argc; n++, optind++)
+    pvs[n].name = argv[optind] ;       /* Copy PV names from command line */
+
+  connect_pvs(pvs, nPvs);
+
+  /* Read and print data */
+
+  result = caget(pvs, nPvs, request, format, type, count);
+
+  /* Shut down Channel Access */
+  ca_context_destroy();
+
 }
 
-int main (int argc, char *argv[])
-{
-    int n;
-    int result;                 /* CA result */
-    OutputT format = plain;     /* User specified format */
-    RequestT request = get;     /* User specified request type */
-    IntFormatT outType;         /* Output type */
 
-    int count = 0;              /* 0 = not specified by -# option */
-    int opt;                    /* getopt() current option */
-    int type = -1;              /* getopt() data type argument */
-    int digits = 0;             /* getopt() no. of float digits */
+/*  */
+/* /\*+************************************************************************** */
+/*  * */
+/*  * Function:	main */
+/*  * */
+/*  * Description:	caget main() */
+/*  * 		Evaluate command line options, set up CA, connect the */
+/*  * 		channels, collect and print the data as requested */
+/*  * */
+/*  * Arg(s) In:	[options] <pv-name> ... */
+/*  * */
+/*  * Arg(s) Out:	none */
+/*  * */
+/*  * Return(s):	Standard return code (0=success, 1=error) */
+/*  * */
+/*  **************************************************************************-*\/ */
 
-    int nPvs;                   /* Number of PVs */
-    pv* pvs;                    /* Array of PV structures */
+/* static void complainIfNotPlainAndSet (OutputT *current, const OutputT requested) */
+/* { */
+/*   if (*current != plain)  */
+/*     fprintf(stderr, */
+/* 	    "Options t,d,a are mutually exclusive. " */
+/* 	    "('caget -h' for help.)\n"); */
+/*   *current = requested; */
+/* } */
 
-    LINE_BUFFER(stdout);        /* Configure stdout buffering */
+/* int main (int argc, char *argv[]) */
+/* { */
+/*   int n; */
+/*   int result;                 /\* CA result *\/ */
+/*   OutputT format = plain;     /\* User specified format *\/ */
+/*   RequestT request = get;     /\* User specified request type *\/ */
+/*   IntFormatT outType;         /\* Output type *\/ */
 
-    while ((opt = getopt(argc, argv, ":taicnhsSe:f:g:l:#:d:0:w:p:F:")) != -1) {
-        switch (opt) {
-        case 'h':               /* Print usage */
-            usage();
-            return 0;
-        case 't':               /* Terse output mode */
-            complainIfNotPlainAndSet(&format, terse);
-            break;
-        case 'a':               /* Wide output mode */
-            complainIfNotPlainAndSet(&format, all);
-            break;
-        case 'c':               /* Callback mode */
-            request = callback;
-            break;
-        case 'd':               /* Data type specification */
-            complainIfNotPlainAndSet(&format, specifiedDbr);
-                                /* Argument (type) may be text or number */
-            if (sscanf(optarg, "%d", &type) != 1)
-            {
-                dbr_text_to_type(optarg, type);
-                if (type == -1)                   /* Invalid? Try prefix DBR_ */
-                {
-                    char str[30] = "DBR_";
-                    strncat(str, optarg, 25);
-                    dbr_text_to_type(str, type);
-                }
-            }
-            if (type < DBR_STRING       || type > DBR_CLASS_NAME
-                || type == DBR_PUT_ACKT || type == DBR_PUT_ACKS)
-            {
-                fprintf(stderr, "Requested dbr type out of range "
-                        "or invalid - ignored. ('caget -h' for help.)\n");
-                format = plain;
-            }
-            break;
-        case 'n':               /* Print ENUM as index numbers */
-            enumAsNr = 1;
-            break;
-        case 'w':               /* Set CA timeout value */
-            if(epicsScanDouble(optarg, &caTimeout) != 1)
-            {
-                fprintf(stderr, "'%s' is not a valid timeout value "
-                        "- ignored. ('caget -h' for help.)\n", optarg);
-                caTimeout = DEFAULT_TIMEOUT;
-            }
-            break;
-        case '#':               /* Array count */
-            if (sscanf(optarg,"%d", &count) != 1)
-            {
-                fprintf(stderr, "'%s' is not a valid array element count "
-                        "- ignored. ('caget -h' for help.)\n", optarg);
-                count = 0;
-            }
-            break;
-        case 'p':               /* CA priority */
-            if (sscanf(optarg,"%u", &caPriority) != 1)
-            {
-                fprintf(stderr, "'%s' is not a valid CA priority "
-                        "- ignored. ('caget -h' for help.)\n", optarg);
-                caPriority = DEFAULT_CA_PRIORITY;
-            }
-            if (caPriority > CA_PRIORITY_MAX) caPriority = CA_PRIORITY_MAX;
-            break;
-        case 's':               /* Select string dbr for floating type data */
-            floatAsString = 1;
-            break;
-        case 'S':               /* Treat char array as (long) string */
-            charArrAsStr = 1;
-            break;
-        case 'e':               /* Select %e/%f/%g format, using <arg> digits */
-        case 'f':
-        case 'g':
-            if (sscanf(optarg, "%d", &digits) != 1)
-                fprintf(stderr, 
-                        "Invalid precision argument '%s' "
-                        "for option '-%c' - ignored.\n", optarg, opt);
-            else
-            {
-                if (digits>=0 && digits<=VALID_DOUBLE_DIGITS)
-                    sprintf(dblFormatStr, "%%-.%d%c", digits, opt);
-                else
-                    fprintf(stderr, "Precision %d for option '-%c' "
-                            "out of range - ignored.\n", digits, opt);
-            }
-            break;
-        case 'l':               /* Convert to long and use integer format */
-        case '0':               /* Select integer format */
-            switch ((char) *optarg) {
-            case 'x': outType = hex; break;    /* x print Hex */
-            case 'b': outType = bin; break;    /* b print Binary */
-            case 'o': outType = oct; break;    /* o print Octal */
-            default :
-                outType = dec;
-                fprintf(stderr, "Invalid argument '%s' "
-                        "for option '-%c' - ignored.\n", optarg, opt);
-            }
-            if (outType != dec) {
-              if (opt == '0') {
-                type = DBR_LONG;
-                outTypeI = outType;
-              } else {
-                outTypeF = outType;
-              }
-            }
-            break;
-        case 'F':               /* Store this for output and tool_lib formatting */
-            fieldSeparator = (char) *optarg;
-            break;
-        case '?':
-            fprintf(stderr,
-                    "Unrecognized option: '-%c'. ('caget -h' for help.)\n",
-                    optopt);
-            return 1;
-        case ':':
-            fprintf(stderr,
-                    "Option '-%c' requires an argument. ('caget -h' for help.)\n",
-                    optopt);
-            return 1;
-        default :
-            usage();
-            return 1;
-        }
-    }
+/*   int count = 0;              /\* 0 = not specified by -# option *\/ */
+/*   int opt;                    /\* getopt() current option *\/ */
+/*   int type = -1;              /\* getopt() data type argument *\/ */
+/*   int digits = 0;             /\* getopt() no. of float digits *\/ */
 
-    nPvs = argc - optind;       /* Remaining arg list are PV names */
+/*   int nPvs;                   /\* Number of PVs *\/ */
+/*   pv* pvs;                    /\* Array of PV structures *\/ */
 
-    if (nPvs < 1)
-    {
-        fprintf(stderr, "No pv name specified. ('caget -h' for help.)\n");
-        return 1;
-    }
-                                /* Start up Channel Access */
+/*   LINE_BUFFER(stdout);        /\* Configure stdout buffering *\/ */
 
-    result = ca_context_create(ca_disable_preemptive_callback);
-    if (result != ECA_NORMAL) {
-        fprintf(stderr, "CA error %s occurred while trying "
-                "to start channel access.\n", ca_message(result));
-        return 1;
-    }
-                                /* Allocate PV structure array */
+/*   while ((opt = getopt(argc, argv, ":taicnhsSe:f:g:l:#:d:0:w:p:F:")) != -1) { */
+/*     switch (opt) { */
+/*     case 'h':               /\* Print usage *\/ */
+/*       usage(); */
+/*       return 0; */
+/*     case 't':               /\* Terse output mode *\/ */
+/*       complainIfNotPlainAndSet(&format, terse); */
+/*       break; */
+/*     case 'a':               /\* Wide output mode *\/ */
+/*       complainIfNotPlainAndSet(&format, all); */
+/*       break; */
+/*     case 'c':               /\* Callback mode *\/ */
+/*       request = callback; */
+/*       break; */
+/*     case 'd':               /\* Data type specification *\/ */
+/*       complainIfNotPlainAndSet(&format, specifiedDbr); */
+/*       /\* Argument (type) may be text or number *\/ */
+/*       if (sscanf(optarg, "%d", &type) != 1) */
+/* 	{ */
+/* 	  dbr_text_to_type(optarg, type); */
+/* 	  if (type == -1)                   /\* Invalid? Try prefix DBR_ *\/ */
+/* 	    { */
+/* 	      char str[30] = "DBR_"; */
+/* 	      strncat(str, optarg, 25); */
+/* 	      dbr_text_to_type(str, type); */
+/* 	    } */
+/* 	} */
+/*       if (type < DBR_STRING       || type > DBR_CLASS_NAME */
+/* 	  || type == DBR_PUT_ACKT || type == DBR_PUT_ACKS) */
+/* 	{ */
+/* 	  fprintf(stderr, "Requested dbr type out of range " */
+/* 		  "or invalid - ignored. ('caget -h' for help.)\n"); */
+/* 	  format = plain; */
+/* 	} */
+/*       break; */
+/*     case 'n':               /\* Print ENUM as index numbers *\/ */
+/*       enumAsNr = 1; */
+/*       break; */
+/*     case 'w':               /\* Set CA timeout value *\/ */
+/*       if(epicsScanDouble(optarg, &caTimeout) != 1) */
+/* 	{ */
+/* 	  fprintf(stderr, "'%s' is not a valid timeout value " */
+/* 		  "- ignored. ('caget -h' for help.)\n", optarg); */
+/* 	  caTimeout = DEFAULT_TIMEOUT; */
+/* 	} */
+/*       break; */
+/*     case '#':               /\* Array count *\/ */
+/*       if (sscanf(optarg,"%d", &count) != 1) */
+/* 	{ */
+/* 	  fprintf(stderr, "'%s' is not a valid array element count " */
+/* 		  "- ignored. ('caget -h' for help.)\n", optarg); */
+/* 	  count = 0; */
+/* 	} */
+/*       break; */
+/*     case 'p':               /\* CA priority *\/ */
+/*       if (sscanf(optarg,"%u", &caPriority) != 1) */
+/* 	{ */
+/* 	  fprintf(stderr, "'%s' is not a valid CA priority " */
+/* 		  "- ignored. ('caget -h' for help.)\n", optarg); */
+/* 	  caPriority = DEFAULT_CA_PRIORITY; */
+/* 	} */
+/*       if (caPriority > CA_PRIORITY_MAX) caPriority = CA_PRIORITY_MAX; */
+/*       break; */
+/*     case 's':               /\* Select string dbr for floating type data *\/ */
+/*       floatAsString = 1; */
+/*       break; */
+/*     case 'S':               /\* Treat char array as (long) string *\/ */
+/*       charArrAsStr = 1; */
+/*       break; */
+/*     case 'e':               /\* Select %e/%f/%g format, using <arg> digits *\/ */
+/*     case 'f': */
+/*     case 'g': */
+/*       if (sscanf(optarg, "%d", &digits) != 1) */
+/* 	fprintf(stderr,  */
+/* 		"Invalid precision argument '%s' " */
+/* 		"for option '-%c' - ignored.\n", optarg, opt); */
+/*       else */
+/* 	{ */
+/* 	  if (digits>=0 && digits<=VALID_DOUBLE_DIGITS) */
+/* 	    sprintf(dblFormatStr, "%%-.%d%c", digits, opt); */
+/* 	  else */
+/* 	    fprintf(stderr, "Precision %d for option '-%c' " */
+/* 		    "out of range - ignored.\n", digits, opt); */
+/* 	} */
+/*       break; */
+/*     case 'l':               /\* Convert to long and use integer format *\/ */
+/*     case '0':               /\* Select integer format *\/ */
+/*       switch ((char) *optarg) { */
+/*       case 'x': outType = hex; break;    /\* x print Hex *\/ */
+/*       case 'b': outType = bin; break;    /\* b print Binary *\/ */
+/*       case 'o': outType = oct; break;    /\* o print Octal *\/ */
+/*       default : */
+/* 	outType = dec; */
+/* 	fprintf(stderr, "Invalid argument '%s' " */
+/* 		"for option '-%c' - ignored.\n", optarg, opt); */
+/*       } */
+/*       if (outType != dec) { */
+/* 	if (opt == '0') { */
+/* 	  type = DBR_LONG; */
+/* 	  outTypeI = outType; */
+/* 	} else { */
+/* 	  outTypeF = outType; */
+/* 	} */
+/*       } */
+/*       break; */
+/*     case 'F':               /\* Store this for output and tool_lib formatting *\/ */
+/*       fieldSeparator = (char) *optarg; */
+/*       break; */
+/*     case '?': */
+/*       fprintf(stderr, */
+/* 	      "Unrecognized option: '-%c'. ('caget -h' for help.)\n", */
+/* 	      optopt); */
+/*       return 1; */
+/*     case ':': */
+/*       fprintf(stderr, */
+/* 	      "Option '-%c' requires an argument. ('caget -h' for help.)\n", */
+/* 	      optopt); */
+/*       return 1; */
+/*     default : */
+/*       usage(); */
+/*       return 1; */
+/*     } */
+/*   } */
 
-    pvs = calloc (nPvs, sizeof(pv));
-    if (!pvs)
-    {
-        fprintf(stderr, "Memory allocation for channel structures failed.\n");
-        return 1;
-    }
-                                /* Connect channels */
+/*   nPvs = argc - optind;       /\* Remaining arg list are PV names *\/ */
 
-    for (n = 0; optind < argc; n++, optind++)
-        pvs[n].name = argv[optind] ;       /* Copy PV names from command line */
+/*   if (nPvs < 1) */
+/*     { */
+/*       fprintf(stderr, "No pv name specified. ('caget -h' for help.)\n"); */
+/*       return 1; */
+/*     } */
+/*   /\* Start up Channel Access *\/ */
 
-    connect_pvs(pvs, nPvs);
+/*   result = ca_context_create(ca_disable_preemptive_callback); */
+/*   if (result != ECA_NORMAL) { */
+/*     fprintf(stderr, "CA error %s occurred while trying " */
+/* 	    "to start channel access.\n", ca_message(result)); */
+/*     return 1; */
+/*   } */
+/*   /\* Allocate PV structure array *\/ */
 
-                                /* Read and print data */
+/*   pvs = calloc (nPvs, sizeof(pv)); */
+/*   if (!pvs) */
+/*     { */
+/*       fprintf(stderr, "Memory allocation for channel structures failed.\n"); */
+/*       return 1; */
+/*     } */
+/*   /\* Connect channels *\/ */
 
-    result = caget(pvs, nPvs, request, format, type, count);
+/*   for (n = 0; optind < argc; n++, optind++) */
+/*     pvs[n].name = argv[optind] ;       /\* Copy PV names from command line *\/ */
 
-                                /* Shut down Channel Access */
-    ca_context_destroy();
+/*   connect_pvs(pvs, nPvs); */
 
-    return result;
-}
+/*   /\* Read and print data *\/ */
+
+/*   result = caget(pvs, nPvs, request, format, type, count); */
+
+/*   /\* Shut down Channel Access *\/ */
+/*   ca_context_destroy(); */
+/*   return result; */
+/* } */

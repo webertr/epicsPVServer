@@ -346,38 +346,66 @@ static int caget (pv *pvs, int nPvs, RequestT request, OutputT format,
 
 
 
-void cagetFuZE(char *argv, int nPvs) {
+void cagetFuZE(char *pvName) {
 
-  /*   /\* Start up Channel Access *\/ */
 
-  int n = 0;
+  int result = 0;
   result = ca_context_create(ca_disable_preemptive_callback);
-  if (result != ECA_NORMAL) {
-    fprintf(stderr, "CA error %s occurred while trying "
-	    "to start channel access.\n", ca_message(result));
-    return 1;
-  }
-  /* Allocate PV structure array */
+  pv* pvs;
+  pvs = calloc(1, sizeof(pv));
 
-  pvs = calloc (nPvs, sizeof(pv));
-  if (!pvs)
-    {
-      fprintf(stderr, "Memory allocation for channel structures failed.\n");
-      return 1;
-    }
-  /* Connect channels */
+  pvs[0].name = pvName;
+  connect_pvs(pvs, 1);
 
-  for (n = 0; optind < argc; n++, optind++)
-    pvs[n].name = argv[optind] ;       /* Copy PV names from command line */
+  RequestT request = get;
+  OutputT format = plain;
+  chtype type = -1;
+  unsigned long count = 0;
+  
+  result = caget(pvs, 1, request, format, type, count);
 
-  connect_pvs(pvs, nPvs);
-
-  /* Read and print data */
-
-  result = caget(pvs, nPvs, request, format, type, count);
-
-  /* Shut down Channel Access */
   ca_context_destroy();
+
+  
+  /* /\*   /\\* Start up Channel Access *\\/ *\/ */
+
+  /* int n = 0; */
+  /* int result = 0; */
+  /* int type = -1; */
+  /* int count = 0; */
+  
+  /* RequestT request = get; */
+  /* pv* pvs;                    // Array of PV structures */
+
+  /* OutputT format = plain; // User specified format */
+  
+  /* result = ca_context_create(ca_disable_preemptive_callback); */
+  /* if (result != ECA_NORMAL) { */
+  /*   fprintf(stderr, "CA error %s occurred while trying " */
+  /* 	    "to start channel access.\n", ca_message(result)); */
+  /*   return; */
+  /* } */
+  /* /\* Allocate PV structure array *\/ */
+
+  /* pvs = calloc (nPvs, sizeof(pv)); */
+  /* if (!pvs) */
+  /*   { */
+  /*     fprintf(stderr, "Memory allocation for channel structures failed.\n"); */
+  /*     return; */
+  /*   } */
+  /* /\* Connect channels *\/ */
+
+  /* for (n = 0; n < nPvs; n++) */
+  /*   pvs[n].name = argv[optind] ;       /\* Copy PV names from command line *\/ */
+
+  /* connect_pvs(pvs, nPvs); */
+
+  /* /\* Read and print data *\/ */
+
+  /* //result = caget(pvs, nPvs, request, format, type, count); */
+
+  /* /\* Shut down Channel Access *\/ */
+  /* //ca_context_destroy(); */
 
 }
 

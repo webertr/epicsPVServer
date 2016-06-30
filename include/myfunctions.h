@@ -8,11 +8,13 @@
 //#include <epicsGetopt.h>
 //#include <alarm.h>
 
+void swapCharArray(char* charArray, char* pattern, char *swapChar);
+
 typedef enum { get, callback } RequestT;
 
 typedef enum { plain, terse, all, specifiedDbr } OutputT;
 
-void cagetFuZE(char *pvName);
+void cagetFuZE(char *pvName, char *resultRead);
 
 static int caget (pv *pvs, int nPvs, RequestT request, OutputT format, chtype dbrType, unsigned long reqElems);
 

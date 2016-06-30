@@ -1,15 +1,11 @@
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
+
 
 void getHTMLFile(char *buffer) {
 
   FILE *f1;
-  f1= fopen("/home/webertr/CPP_Stuff/simpleWebServer/var/html_file.html", "r" );
+  f1= fopen("/home/webertr/Github/epicsPVServer/var/html_file.html", "r" );
 
   //char *fgets( char *buf, int n, FILE *fp );
   //char *temp = fgets(buffer, 100, f1);
@@ -26,8 +22,50 @@ void getHTMLFile(char *buffer) {
   while (ret !=EOF);
   
   //int fclose( FILE *fp );
-  ret = fclose(f1);
-
+  ret = fclose(f1);  
+  
   return;
 
 }
+
+
+void swapCharArray(char* charArray, char* pattern, char* swapChar) {
+
+  typedef enum {false, true} bool;
+  int size = strlen(charArray);
+  int sizeBuffer = strlen(pattern);
+  int sizeSwap = strlen(swapChar);
+  int endIter = size - sizeBuffer;
+  bool test = false;
+  int j;
+  int i;
+  int ii;
+  
+  for (i =0; i < endIter; i++) {
+
+    test = true;
+    j = 0;
+    while ((test == true) && (j < sizeBuffer)) {
+
+      if (charArray[i+j] != pattern[j]) {
+	test = false;
+      }
+
+      j++;
+
+    }
+
+    if (test) {
+      for (ii = 0; ii < sizeSwap; ii++) {
+	charArray[i+ii] = swapChar[ii];
+      }
+    }
+  }
+
+  return;
+      
+
+}
+
+
+  

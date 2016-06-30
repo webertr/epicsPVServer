@@ -38,12 +38,6 @@ int main(void) {
   //caExample("fred");
   printf("main waiting for thread to terminate...\n");
 
-  cagetFuZE("fred");
-
-  cagetFuZE("fred2");
-
-  cagetFuZE("fred3");
-
   pthread_join(pth,NULL);
 
   // to stop a thread:

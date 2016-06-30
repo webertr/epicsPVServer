@@ -5,7 +5,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include "../include/myfunctions.h"
+#include <myfunctions.h>
 
 #define MYPORT "3490" // the port users will be connecting to
 #define BACKLOG 10 // how many pending connections queue will hold
@@ -41,7 +41,16 @@ void listenTest(void) {
   char htmlMessage[1000];
   getHTMLFile(htmlMessage);
 
-  //printf(temp);
+  char *pv_Read1 = "Corn";
+  char *pv_Read2 = "Bread";
+  char *pv_Read3 = "Pizza"; 
+  cagetFuZE("fred", pv_Read1);  
+  cagetFuZE("fred2", pv_Read2);
+  cagetFuZE("fred3", pv_Read3);
+
+  swapCharArray(htmlMessage, "[1##]", pv_Read1);
+  swapCharArray(htmlMessage, "[2##]", pv_Read2);
+  swapCharArray(htmlMessage, "[3##]", pv_Read3);
 
 
   struct sockaddr_storage their_addr;
@@ -62,17 +71,17 @@ void listenTest(void) {
   bind(sockfd, res->ai_addr, res->ai_addrlen);
   listen(sockfd, BACKLOG);
 
+  int len, bytes_sent;
   
   while (1) {
     // now accept an incoming connection:
     addr_size = sizeof their_addr;
     new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
 
-    int len, bytes_sent;
     len = strlen(htmlMessage);
     bytes_sent = send(new_fd, htmlMessage, len, 0);
 
-    printf("\n %d \n", bytes_sent); 
+    printf("\n %d Bytes Sent\n", bytes_sent); 
   
     // ready to communicate on socket descriptor new_fd!
   } 

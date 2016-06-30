@@ -346,7 +346,7 @@ static int caget (pv *pvs, int nPvs, RequestT request, OutputT format,
 
 
 
-void cagetFuZE(char *pvName) {
+void cagetFuZE(char *pvName, char *resultRead) {
 
 
   int result = 0;

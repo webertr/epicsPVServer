@@ -41,16 +41,14 @@ void listenTest(void) {
   char htmlMessage[1000];
   getHTMLFile(htmlMessage);
 
-  char *pv_Read1 = "Corn";
-  char *pv_Read2 = "Bread";
-  char *pv_Read3 = "Pizza"; 
-  cagetFuZE("fred", pv_Read1);  
-  cagetFuZE("fred2", pv_Read2);
-  cagetFuZE("fred3", pv_Read3);
+  char *pv_Read[] = {"fred1", "fred2", "fred3"};
+  char *read_Buffer[3];
 
-  swapCharArray(htmlMessage, "[1##]", pv_Read1);
-  swapCharArray(htmlMessage, "[2##]", pv_Read2);
-  swapCharArray(htmlMessage, "[3##]", pv_Read3);
+  cagetFuZE(pv_Read, 3, read_Buffer);  
+
+  swapCharArray(htmlMessage, "[1##]", pv_Read[0]);
+  swapCharArray(htmlMessage, "[2##]", pv_Read[1]);
+  swapCharArray(htmlMessage, "[3##]", pv_Read[2]);
 
 
   struct sockaddr_storage their_addr;

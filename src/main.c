@@ -27,15 +27,6 @@ int main(void) {
   //listenTest();
   pthread_create(&pth,NULL,func,"foo");
 
-  	
-  while(i < 5)
-    {
-      usleep(1);
-      printf("main is running...\n");
-      ++i;
-    }
-
-  //caExample("fred");
   printf("main waiting for thread to terminate...\n");
 
   pthread_join(pth,NULL);

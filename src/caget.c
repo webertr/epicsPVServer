@@ -51,58 +51,6 @@ static int nRead = 0;           /* Number of channels that were read */
 static int floatAsString = 0;   /* Flag: fetch floats as string */
 
 
-static void usage (void)
-{
-    fprintf (stderr, "\nUsage: caget [options] <PV name> ...\n\n"
-    "  -h: Help: Print this message\n"
-    "Channel Access options:\n"
-    "  -w <sec>: Wait time, specifies CA timeout, default is %f second(s)\n"
-    "  -c: Asynchronous get (use ca_get_callback and wait for completion)\n"
-    "  -p <prio>: CA priority (0-%u, default 0=lowest)\n"
-    "Format options:\n"
-    "      Default output format is \"name value\"\n"
-    "  -t: Terse mode - print only value, without name\n"
-    "  -a: Wide mode \"name timestamp value stat sevr\" (read PVs as DBR_TIME_xxx)\n"
-    "  -d <type>: Request specific dbr type; use string (DBR_ prefix may be omitted)\n"
-    "      or number of one of the following types:\n"
-    " DBR_STRING     0  DBR_STS_FLOAT    9  DBR_TIME_LONG   19  DBR_CTRL_SHORT    29\n"
-    " DBR_INT        1  DBR_STS_ENUM    10  DBR_TIME_DOUBLE 20  DBR_CTRL_INT      29\n"
-    " DBR_SHORT      1  DBR_STS_CHAR    11  DBR_GR_STRING   21  DBR_CTRL_FLOAT    30\n"
-    " DBR_FLOAT      2  DBR_STS_LONG    12  DBR_GR_SHORT    22  DBR_CTRL_ENUM     31\n"
-    " DBR_ENUM       3  DBR_STS_DOUBLE  13  DBR_GR_INT      22  DBR_CTRL_CHAR     32\n"
-    " DBR_CHAR       4  DBR_TIME_STRING 14  DBR_GR_FLOAT    23  DBR_CTRL_LONG     33\n"
-    " DBR_LONG       5  DBR_TIME_INT    15  DBR_GR_ENUM     24  DBR_CTRL_DOUBLE   34\n"
-    " DBR_DOUBLE     6  DBR_TIME_SHORT  15  DBR_GR_CHAR     25  DBR_STSACK_STRING 37\n"
-    " DBR_STS_STRING 7  DBR_TIME_FLOAT  16  DBR_GR_LONG     26  DBR_CLASS_NAME    38\n"
-    " DBR_STS_SHORT  8  DBR_TIME_ENUM   17  DBR_GR_DOUBLE   27\n"
-    " DBR_STS_INT    8  DBR_TIME_CHAR   18  DBR_CTRL_STRING 28\n"
-    "Enum format:\n"
-    "  -n: Print DBF_ENUM value as number (default is enum string)\n"
-    "Arrays: Value format: print number of requested values, then list of values\n"
-    "  Default:    Print all values\n"
-    "  -# <count>: Print first <count> elements of an array\n"
-    "  -S:         Print array of char as a string (long string)\n"
-    "Floating point type format:\n"
-    "  Default: Use %%g format\n"
-    "  -e <nr>: Use %%e format, with a precision of <nr> digits\n"
-    "  -f <nr>: Use %%f format, with a precision of <nr> digits\n"
-    "  -g <nr>: Use %%g format, with a precision of <nr> digits\n"
-    "  -s:      Get value as string (honors server-side precision)\n"
-    "  -lx:     Round to long integer and print as hex number\n"
-    "  -lo:     Round to long integer and print as octal number\n"
-    "  -lb:     Round to long integer and print as binary number\n"
-    "Integer number format:\n"
-    "  Default: Print as decimal number\n"
-    "  -0x: Print as hex number\n"
-    "  -0o: Print as octal number\n"
-    "  -0b: Print as binary number\n"
-    "Alternate output field separator:\n"
-    "  -F <ofs>: Use <ofs> as an alternate output field separator\n"
-    "\nExample: caget -a -f8 my_channel another_channel\n"
-    "  (uses wide output format, doubles are printed as %%f with precision of 8)\n\n"
-             , DEFAULT_TIMEOUT, CA_PRIORITY_MAX);
-}
-
 
 
 /*+**************************************************************************
@@ -158,7 +106,7 @@ static int caget (pv *pvs, int nPvs, RequestT request, OutputT format,
     int n, result;
 
     for (n = 0; n < nPvs; n++) {
-        unsigned long nElems;
+         unsigned long nElems;
 
                                 /* Set up pvs structure */
                                 /* -------------------- */
@@ -246,7 +194,7 @@ static int caget (pv *pvs, int nPvs, RequestT request, OutputT format,
             }
         }
     }
-
+    
                                 /* Print the data */
                                 /* -------------- */
 
@@ -346,26 +294,239 @@ static int caget (pv *pvs, int nPvs, RequestT request, OutputT format,
 
 
 
-void cagetFuZE(char *pvName, char *resultRead) {
+void cagetFuZE(char *pvNames[], int nPvs, char *resultRead[]) {
 
 
-  int result = 0;
+  int n, result;
+
   result = ca_context_create(ca_disable_preemptive_callback);
   pv* pvs;
-  pvs = calloc(1, sizeof(pv));
 
-  pvs[0].name = pvName;
-  connect_pvs(pvs, 1);
+  pvs = calloc(nPvs, sizeof(pv));
+  int i;
+
+  for (i = 0; i < nPvs; i++) {
+    pvs[i].name = pvNames[i];
+  }
+  
+  connect_pvs(pvs, nPvs);
 
   RequestT request = get;
   OutputT format = plain;
-  chtype type = -1;
-  unsigned long count = 0;
+  chtype dbrType = -1;
+  unsigned long reqElems = 0;
   
-  result = caget(pvs, 1, request, format, type, count);
+  for (n = 0; n < nPvs; n++) {
+    
+    unsigned long nElems;
 
-  ca_context_destroy();
+    /* Set up pvs structure */
+    /* -------------------- */
 
+    /* Get natural type and array count */
+    nElems         = ca_element_count(pvs[n].chid);
+    pvs[n].dbfType = ca_field_type(pvs[n].chid);
+    pvs[n].dbrType = dbrType;
+
+    /* Set up value structures */
+    if (format != specifiedDbr)
+      {
+	pvs[n].dbrType = dbf_type_to_DBR_TIME(pvs[n].dbfType); /* Use native type */
+	if (dbr_type_is_ENUM(pvs[n].dbrType))                  /* Enums honour -n option */
+	  {
+	    if (enumAsNr) pvs[n].dbrType = DBR_TIME_INT;
+	    else          pvs[n].dbrType = DBR_TIME_STRING;
+	  }
+	else if (floatAsString &&
+		 (dbr_type_is_FLOAT(pvs[n].dbrType) || dbr_type_is_DOUBLE(pvs[n].dbrType)))
+	  {
+	    pvs[n].dbrType = DBR_TIME_STRING;
+	  }
+      }
+
+    /* Issue CA request */
+    /* ---------------- */
+
+    if (ca_state(pvs[n].chid) == cs_conn)
+      {
+  	nConn++;
+  	pvs[n].onceConnected = 1;
+  	if (request == callback)
+  	  {
+  	    /* Event handler will allocate value and set nElems */
+  	    pvs[n].reqElems = reqElems > nElems ? nElems : reqElems;
+  	    result = ca_array_get_callback(pvs[n].dbrType,
+  					   pvs[n].reqElems,
+  					   pvs[n].chid,
+  					   event_handler,
+  					   (void*)&pvs[n]);
+  	  } else {
+  	  /* We allocate value structure and set nElems */
+	  pvs[n].nElems = reqElems && reqElems < nElems ? reqElems : nElems;
+  	  pvs[n].value = calloc(1, dbr_size_n(pvs[n].dbrType, pvs[n].nElems));
+	  if (!pvs[n].value) {
+  	    fprintf(stderr,"Memory allocation failed\n");
+  	    return;
+  	  }
+  	  result = ca_array_get(pvs[n].dbrType,
+  				pvs[n].nElems,
+  				pvs[n].chid,
+  				pvs[n].value);
+  	}
+  	pvs[n].status = result;
+      } else {
+      pvs[n].status = ECA_DISCONN;
+    }
+  }
+
+  if (!nConn) return;              /* No connection? We're done. */
+
+  /* Wait for completion */
+  /* ------------------- */
+
+  result = ca_pend_io(caTimeout);
+  if (result == ECA_TIMEOUT)
+    fprintf(stderr, "Read operation timed out: some PV data was not read.\n");
+
+  if (request == callback)    /* Also wait for callbacks */
+    {
+      if (caTimeout != 0)
+        {
+	  double slice = caTimeout / PEND_EVENT_SLICES;
+	  for (n = 0; n < PEND_EVENT_SLICES; n++)
+            {
+	      ca_pend_event(slice);
+	      if (nRead >= nConn) break;
+            }
+	  if (nRead < nConn)
+	    fprintf(stderr, "Read operation timed out: some PV data was not read.\n");
+        } else {
+	/* For 0 timeout keep waiting until all are done */
+	while (nRead < nConn) {
+	  ca_pend_event(1.0);
+	}
+      }
+    }
+
+  char temp[3][10];
+  for (n = 0; n < nPvs; n++) {
+    sprintf(temp[n],val2str(pvs[n].value, pvs[n].dbrType, 0));
+  }
+
+  printf(temp[0]);
+  printf("\n");
+  printf(temp[1]);
+  printf("\n");
+  printf(temp[2]);
+  printf("\n");
+  
+
+  /* Print the data */
+  /* -------------- */
+
+  for (n = 0; n < nPvs; n++) {
+
+    switch (format) {
+    case plain:             /* Emulate old caget behaviour */
+      if (pvs[n].nElems <= 1 && fieldSeparator == ' ') printf("%-30s", pvs[n].name);
+      else                                               printf("%s", pvs[n].name);
+      printf("%c", fieldSeparator);
+    case terse:
+      if (pvs[n].status == ECA_DISCONN)
+	printf("*** not connected\n");
+      else if (pvs[n].status == ECA_NORDACCESS)
+	printf("*** no read access\n");
+      else if (pvs[n].status != ECA_NORMAL)
+	printf("*** CA error %s\n", ca_message(pvs[n].status));
+      else if (pvs[n].value == 0)
+	printf("*** no data available (timeout)\n");
+      else
+	{
+	  if (charArrAsStr && dbr_type_is_CHAR(pvs[n].dbrType) && (reqElems || pvs[n].nElems > 1)) {
+	    dbr_char_t *s = (dbr_char_t*) dbr_value_ptr(pvs[n].value, pvs[n].dbrType);
+	    int dlen = epicsStrnEscapedFromRawSize((char*)s, strlen((char*)s));
+	    char *d = calloc(dlen+1, sizeof(char));
+	    if(d) {
+	      epicsStrnEscapedFromRaw(d, dlen+1, (char*)s, strlen((char*)s));
+	      printf("%s", d);
+	      free(d);
+	    } else {
+	      fprintf(stderr,"Failed to allocate space for escaped string\n");
+	    }
+	  } else {
+	    if (reqElems || pvs[n].nElems > 1) printf("%lu%c", pvs[n].nElems, fieldSeparator);
+	    for (i=0; i<pvs[n].nElems; ++i) {
+	      if (i) printf ("%c", fieldSeparator);
+	      printf("%s", val2str(pvs[n].value, pvs[n].dbrType, i));
+	    }
+	  }
+	  printf("\n");
+	}
+      break;
+    case all:
+      print_time_val_sts(&pvs[n], reqElems);
+      break;
+    case specifiedDbr:
+      printf("%s\n", pvs[n].name);
+      if (pvs[n].status == ECA_DISCONN)
+	printf("    *** not connected\n");
+      else if (pvs[n].status == ECA_NORDACCESS)
+	printf("    *** no read access\n");
+      else if (pvs[n].status != ECA_NORMAL)
+	printf("    *** CA error %s\n", ca_message(pvs[n].status));
+      else
+	{
+	  printf("    Native data type: %s\n",
+		 dbf_type_to_text(pvs[n].dbfType));
+	  printf("    Request type:     %s\n",
+		 dbr_type_to_text(pvs[n].dbrType));
+	  if (pvs[n].dbrType == DBR_CLASS_NAME)
+	    printf("    Class Name:       %s\n",
+		   *((dbr_string_t*)dbr_value_ptr(pvs[n].value,
+						  pvs[n].dbrType)));
+	  else {
+	    printf("    Element count:    %lu\n"
+		   "    Value:            ",
+		   pvs[n].nElems);
+	    if (charArrAsStr && dbr_type_is_CHAR(pvs[n].dbrType) && (reqElems || pvs[n].nElems > 1)) {
+	      dbr_char_t *s = (dbr_char_t*) dbr_value_ptr(pvs[n].value, pvs[n].dbrType);
+	      int dlen = epicsStrnEscapedFromRawSize((char*)s, strlen((char*)s));
+	      char *d = calloc(dlen+1, sizeof(char));
+	      if(d) {
+		epicsStrnEscapedFromRaw(d, dlen+1, (char*)s, strlen((char*)s));
+		printf("%s", d);
+		free(d);
+	      } else {
+		fprintf(stderr,"Failed to allocate space for escaped string\n");
+	      }
+	    } else {
+	      for (i=0; i<pvs[n].nElems; ++i) {
+		if (i) printf ("%c", fieldSeparator);
+		printf("%s", val2str(pvs[n].value, pvs[n].dbrType, i));
+	      }
+	    }
+	    printf("\n");
+	    if (pvs[n].dbrType > DBR_DOUBLE) /* Extended type extra info */
+	      printf("%s\n", dbr2str(pvs[n].value, pvs[n].dbrType));
+	  }
+	}
+      break;
+    default :
+      break;
+    }
+  }
+
+  for (i = 0; i < 3; i++) {
+    printf("\n%i\n", i);
+    printf(resultRead[i]);
+  }
+
+  return;
+
+}
+
+
+  
   
   /* /\*   /\\* Start up Channel Access *\\/ *\/ */
 
@@ -407,7 +568,7 @@ void cagetFuZE(char *pvName, char *resultRead) {
   /* /\* Shut down Channel Access *\/ */
   /* //ca_context_destroy(); */
 
-}
+//}
 
 
 /*  */

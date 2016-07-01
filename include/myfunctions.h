@@ -14,7 +14,7 @@ typedef enum { get, callback } RequestT;
 
 typedef enum { plain, terse, all, specifiedDbr } OutputT;
 
-void cagetFuZE(char *pvName, char *resultRead);
+void cagetFuZE(char **pvName, int nPvs, char **resultRead);
 
 static int caget (pv *pvs, int nPvs, RequestT request, OutputT format, chtype dbrType, unsigned long reqElems);
 

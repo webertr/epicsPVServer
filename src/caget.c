@@ -36,6 +36,7 @@
 #include <epicsGetopt.h>
 
 #include <tool_lib.h>
+#include <myfunctions.h>
 
 #define VALID_DOUBLE_DIGITS 18  /* Max usable precision for a double */
 #define PEND_EVENT_SLICES 5     /* No. of pend_event slices for callback requests */
@@ -294,29 +295,26 @@ static int caget (pv *pvs, int nPvs, RequestT request, OutputT format,
 
 
 
-void cagetFuZE(char *pvNames[], int nPvs, char *resultRead[]) {
+void cagetFuZE(char *pvName, char *pvValue) {
 
 
   int n, result;
-
   result = ca_context_create(ca_disable_preemptive_callback);
   pv* pvs;
 
-  pvs = calloc(nPvs, sizeof(pv));
+  pvs = calloc(1, sizeof(pv));
   int i;
 
-  for (i = 0; i < nPvs; i++) {
-    pvs[i].name = pvNames[i];
-  }
+  pvs[0].name = pvName;
   
-  connect_pvs(pvs, nPvs);
+  connect_pvs(pvs, 1);
 
   RequestT request = get;
   OutputT format = plain;
   chtype dbrType = -1;
   unsigned long reqElems = 0;
   
-  for (n = 0; n < nPvs; n++) {
+  for (n = 0; n < 1; n++) {
     
     unsigned long nElems;
 
@@ -408,120 +406,108 @@ void cagetFuZE(char *pvNames[], int nPvs, char *resultRead[]) {
       }
     }
 
-  char temp[3][10];
-  for (n = 0; n < nPvs; n++) {
-    sprintf(temp[n],val2str(pvs[n].value, pvs[n].dbrType, 0));
-  }
-
-  printf(temp[0]);
-  printf("\n");
-  printf(temp[1]);
-  printf("\n");
-  printf(temp[2]);
-  printf("\n");
-  
-
   /* Print the data */
   /* -------------- */
 
-  for (n = 0; n < nPvs; n++) {
-
-    switch (format) {
-    case plain:             /* Emulate old caget behaviour */
-      if (pvs[n].nElems <= 1 && fieldSeparator == ' ') printf("%-30s", pvs[n].name);
-      else                                               printf("%s", pvs[n].name);
-      printf("%c", fieldSeparator);
-    case terse:
-      if (pvs[n].status == ECA_DISCONN)
-	printf("*** not connected\n");
-      else if (pvs[n].status == ECA_NORDACCESS)
-	printf("*** no read access\n");
-      else if (pvs[n].status != ECA_NORMAL)
-	printf("*** CA error %s\n", ca_message(pvs[n].status));
-      else if (pvs[n].value == 0)
-	printf("*** no data available (timeout)\n");
-      else
-	{
-	  if (charArrAsStr && dbr_type_is_CHAR(pvs[n].dbrType) && (reqElems || pvs[n].nElems > 1)) {
-	    dbr_char_t *s = (dbr_char_t*) dbr_value_ptr(pvs[n].value, pvs[n].dbrType);
-	    int dlen = epicsStrnEscapedFromRawSize((char*)s, strlen((char*)s));
-	    char *d = calloc(dlen+1, sizeof(char));
-	    if(d) {
-	      epicsStrnEscapedFromRaw(d, dlen+1, (char*)s, strlen((char*)s));
-	      printf("%s", d);
-	      free(d);
-	    } else {
-	      fprintf(stderr,"Failed to allocate space for escaped string\n");
-	    }
-	  } else {
-	    if (reqElems || pvs[n].nElems > 1) printf("%lu%c", pvs[n].nElems, fieldSeparator);
-	    for (i=0; i<pvs[n].nElems; ++i) {
-	      if (i) printf ("%c", fieldSeparator);
-	      printf("%s", val2str(pvs[n].value, pvs[n].dbrType, i));
-	    }
-	  }
-	  printf("\n");
-	}
-      break;
-    case all:
-      print_time_val_sts(&pvs[n], reqElems);
-      break;
-    case specifiedDbr:
-      printf("%s\n", pvs[n].name);
-      if (pvs[n].status == ECA_DISCONN)
-	printf("    *** not connected\n");
-      else if (pvs[n].status == ECA_NORDACCESS)
-	printf("    *** no read access\n");
-      else if (pvs[n].status != ECA_NORMAL)
-	printf("    *** CA error %s\n", ca_message(pvs[n].status));
-      else
-	{
-	  printf("    Native data type: %s\n",
-		 dbf_type_to_text(pvs[n].dbfType));
-	  printf("    Request type:     %s\n",
-		 dbr_type_to_text(pvs[n].dbrType));
-	  if (pvs[n].dbrType == DBR_CLASS_NAME)
-	    printf("    Class Name:       %s\n",
-		   *((dbr_string_t*)dbr_value_ptr(pvs[n].value,
-						  pvs[n].dbrType)));
-	  else {
-	    printf("    Element count:    %lu\n"
-		   "    Value:            ",
-		   pvs[n].nElems);
-	    if (charArrAsStr && dbr_type_is_CHAR(pvs[n].dbrType) && (reqElems || pvs[n].nElems > 1)) {
-	      dbr_char_t *s = (dbr_char_t*) dbr_value_ptr(pvs[n].value, pvs[n].dbrType);
-	      int dlen = epicsStrnEscapedFromRawSize((char*)s, strlen((char*)s));
-	      char *d = calloc(dlen+1, sizeof(char));
-	      if(d) {
-		epicsStrnEscapedFromRaw(d, dlen+1, (char*)s, strlen((char*)s));
-		printf("%s", d);
-		free(d);
-	      } else {
-		fprintf(stderr,"Failed to allocate space for escaped string\n");
-	      }
-	    } else {
-	      for (i=0; i<pvs[n].nElems; ++i) {
-		if (i) printf ("%c", fieldSeparator);
-		printf("%s", val2str(pvs[n].value, pvs[n].dbrType, i));
-	      }
-	    }
-	    printf("\n");
-	    if (pvs[n].dbrType > DBR_DOUBLE) /* Extended type extra info */
-	      printf("%s\n", dbr2str(pvs[n].value, pvs[n].dbrType));
-	  }
-	}
-      break;
-    default :
-      break;
-    }
-  }
-
-  for (i = 0; i < 3; i++) {
-    printf("\n%i\n", i);
-    printf(resultRead[i]);
-  }
+  sprintf(pvValue, "%s\n", val2str(pvs[0].value, pvs[0].dbrType, 0));
 
   return;
+
+  
+  /* for (n = 0; n < 1; n++) { */
+
+  /*   switch (format) { */
+  /*   case plain:             /\* Emulate old caget behaviour *\/ */
+  /*     if (pvs[n].nElems <= 1 && fieldSeparator == ' ') printf("%-30s", pvs[n].name); */
+  /*     else                                               printf("%s", pvs[n].name); */
+  /*     printf("%c", fieldSeparator); */
+  /*   case terse: */
+  /*     if (pvs[n].status == ECA_DISCONN) */
+  /* 	printf("*** not connected\n"); */
+  /*     else if (pvs[n].status == ECA_NORDACCESS) */
+  /* 	printf("*** no read access\n"); */
+  /*     else if (pvs[n].status != ECA_NORMAL) */
+  /* 	printf("*** CA error %s\n", ca_message(pvs[n].status)); */
+  /*     else if (pvs[n].value == 0) */
+  /* 	printf("*** no data available (timeout)\n"); */
+  /*     else */
+  /* 	{ */
+  /* 	  if (charArrAsStr && dbr_type_is_CHAR(pvs[n].dbrType) && (reqElems || pvs[n].nElems > 1)) { */
+  /* 	    dbr_char_t *s = (dbr_char_t*) dbr_value_ptr(pvs[n].value, pvs[n].dbrType); */
+  /* 	    int dlen = epicsStrnEscapedFromRawSize((char*)s, strlen((char*)s)); */
+  /* 	    char *d = calloc(dlen+1, sizeof(char)); */
+  /* 	    if(d) { */
+  /* 	      epicsStrnEscapedFromRaw(d, dlen+1, (char*)s, strlen((char*)s)); */
+  /* 	      printf("%s", d); */
+  /* 	      free(d); */
+  /* 	    } else { */
+  /* 	      fprintf(stderr,"Failed to allocate space for escaped string\n"); */
+  /* 	    } */
+  /* 	  } else { */
+  /* 	    if (reqElems || pvs[n].nElems > 1) printf("%lu%c", pvs[n].nElems, fieldSeparator); */
+  /* 	    for (i=0; i<pvs[n].nElems; ++i) { */
+  /* 	      if (i) printf ("%c", fieldSeparator); */
+  /* 	      printf("%s", val2str(pvs[n].value, pvs[n].dbrType, i)); */
+  /* 	      // This one prints */
+  /* 	    } */
+  /* 	  } */
+  /* 	  printf("\n"); */
+  /* 	} */
+  /*     break; */
+  /*   case all: */
+  /*     print_time_val_sts(&pvs[n], reqElems); */
+  /*     break; */
+  /*   case specifiedDbr: */
+  /*     printf("%s\n", pvs[n].name); */
+  /*     if (pvs[n].status == ECA_DISCONN) */
+  /* 	printf("    *** not connected\n"); */
+  /*     else if (pvs[n].status == ECA_NORDACCESS) */
+  /* 	printf("    *** no read access\n"); */
+  /*     else if (pvs[n].status != ECA_NORMAL) */
+  /* 	printf("    *** CA error %s\n", ca_message(pvs[n].status)); */
+  /*     else */
+  /* 	{ */
+  /* 	  printf("    Native data type: %s\n", */
+  /* 		 dbf_type_to_text(pvs[n].dbfType)); */
+  /* 	  printf("    Request type:     %s\n", */
+  /* 		 dbr_type_to_text(pvs[n].dbrType)); */
+  /* 	  if (pvs[n].dbrType == DBR_CLASS_NAME) */
+  /* 	    printf("    Class Name:       %s\n", */
+  /* 		   *((dbr_string_t*)dbr_value_ptr(pvs[n].value, */
+  /* 						  pvs[n].dbrType))); */
+  /* 	  else { */
+  /* 	    printf("    Element count:    %lu\n" */
+  /* 		   "    Value:            ", */
+  /* 		   pvs[n].nElems); */
+  /* 	    if (charArrAsStr && dbr_type_is_CHAR(pvs[n].dbrType) && (reqElems || pvs[n].nElems > 1)) { */
+  /* 	      dbr_char_t *s = (dbr_char_t*) dbr_value_ptr(pvs[n].value, pvs[n].dbrType); */
+  /* 	      int dlen = epicsStrnEscapedFromRawSize((char*)s, strlen((char*)s)); */
+  /* 	      char *d = calloc(dlen+1, sizeof(char)); */
+  /* 	      if(d) { */
+  /* 		epicsStrnEscapedFromRaw(d, dlen+1, (char*)s, strlen((char*)s)); */
+  /* 		printf("%s", d); */
+  /* 		free(d); */
+  /* 	      } else { */
+  /* 		fprintf(stderr,"Failed to allocate space for escaped string\n"); */
+  /* 	      } */
+  /* 	    } else { */
+  /* 	      for (i=0; i<pvs[n].nElems; ++i) { */
+  /* 		if (i) printf ("%c", fieldSeparator); */
+  /* 		printf("%s", val2str(pvs[n].value, pvs[n].dbrType, i)); */
+  /* 	      } */
+  /* 	    } */
+  /* 	    printf("\n"); */
+  /* 	    if (pvs[n].dbrType > DBR_DOUBLE) /\* Extended type extra info *\/ */
+  /* 	      printf("%s\n", dbr2str(pvs[n].value, pvs[n].dbrType)); */
+  /* 	  } */
+  /* 	} */
+  /*     break; */
+  /*   default : */
+  /*     break; */
+  /*   } */
+  /* } */
+
+  //return returnFloat;
 
 }
 

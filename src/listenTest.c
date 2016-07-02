@@ -41,14 +41,14 @@ void listenTest(void) {
   char htmlMessage[1000];
   getHTMLFile(htmlMessage);
 
-  char *pv_Read[] = {"fred1", "fred2", "fred3"};
-  char *read_Buffer[3];
+  char *pv_Read = "fred1";
+  char pvValue[10];
+  cagetFuZE(pv_Read, pvValue);
 
-  cagetFuZE(pv_Read, 3, read_Buffer);  
-
-  swapCharArray(htmlMessage, "[1##]", pv_Read[0]);
-  swapCharArray(htmlMessage, "[2##]", pv_Read[1]);
-  swapCharArray(htmlMessage, "[3##]", pv_Read[2]);
+  printf(pvValue);
+  swapCharArray(htmlMessage, "[1##]", pvValue);
+  //swapCharArray(htmlMessage, "[2##]", pv_Read[1]);
+  //swapCharArray(htmlMessage, "[3##]", pv_Read[2]);
 
 
   struct sockaddr_storage their_addr;
@@ -79,8 +79,8 @@ void listenTest(void) {
     len = strlen(htmlMessage);
     bytes_sent = send(new_fd, htmlMessage, len, 0);
 
-    printf("\n %d Bytes Sent\n", bytes_sent); 
-  
+    printf("\n %d Bytes Sent\n", bytes_sent);
+
     // ready to communicate on socket descriptor new_fd!
   } 
 }

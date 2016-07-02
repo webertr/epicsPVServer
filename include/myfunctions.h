@@ -1,22 +1,13 @@
 #ifndef MYFUNCTION_H_   /* Include guard */
 #define MYFUNCTION_H_
 
-//#include <epicsStdlib.h>
-//#include <epicsString.h>
 #include <cadef.h>
 #include <tool_lib.h>
-//#include <epicsGetopt.h>
-//#include <alarm.h>
+
 
 void swapCharArray(char* charArray, char* pattern, char *swapChar);
 
-typedef enum { get, callback } RequestT;
-
-typedef enum { plain, terse, all, specifiedDbr } OutputT;
-
-void cagetFuZE(char **pvName, int nPvs, char **resultRead);
-
-static int caget (pv *pvs, int nPvs, RequestT request, OutputT format, chtype dbrType, unsigned long reqElems);
+void cagetFuZE(char *pvName, char *pvValue);
 
 void printIPAddress(int argc, char *argv[]);  /* An example function declaration */
 

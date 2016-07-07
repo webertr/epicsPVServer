@@ -2,13 +2,25 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <myfunctions.h>
+#include <stdlib.h>
 
 #define MYPORT "3490" // the port users will be connecting to
 #define BACKLOG 10 // how many pending connections queue will hold
+
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa)
+{
+    if (sa->sa_family == AF_INET) {
+        return &(((struct sockaddr_in*)sa)->sin_addr);
+    }
+
+    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
 
 
 void listenTest(void) {
@@ -39,6 +51,8 @@ void listenTest(void) {
   */
 
   char htmlMessage[1000];
+  char s[INET6_ADDRSTRLEN];
+  
   getHTMLFile(htmlMessage);
 
   char *pv_Read = "fred1";
@@ -55,6 +69,8 @@ void listenTest(void) {
   socklen_t addr_size;
   struct addrinfo hints, *res;
   int sockfd, new_fd;
+  int len, bytes_sent;
+
  
   // !! don't forget your error checking for these calls !!
   // first, load up address structs with getaddrinfo():
@@ -67,19 +83,41 @@ void listenTest(void) {
   // make a socket, bind it, and listen on it:
   sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   bind(sockfd, res->ai_addr, res->ai_addrlen);
-  listen(sockfd, BACKLOG);
 
-  int len, bytes_sent;
-  
+  addr_size = sizeof their_addr;
+
+  pid_t pid, retpid;
   while (1) {
-    // now accept an incoming connection:
-    addr_size = sizeof their_addr;
+
+
+    listen(sockfd, BACKLOG);
+    
     new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
 
-    len = strlen(htmlMessage);
-    bytes_sent = send(new_fd, htmlMessage, len, 0);
+    inet_ntop(their_addr.ss_family,
+	      get_in_addr((struct sockaddr *)&their_addr),
+	      s, sizeof s);
+    printf("server: got connection from %s\n", s);
 
-    printf("\n %d Bytes Sent\n", bytes_sent);
+    pid = fork();
+    if ( pid == 0 ) { // this is the child process
+      
+      len = strlen(htmlMessage);
+      bytes_sent = send(new_fd, htmlMessage, len, 0);
+      printf("\n %d Bytes Sent\n", bytes_sent);
+      sleep(1);
+      close(new_fd);
+      exit(0);
+    }
+    close(new_fd);  // parent doesn't need this
+    // now accept an incoming connection:
+    retpid = waitpid(pid, NULL, 0);
+    //while(waitpid(-1, NULL, WNOHANG) > 0);
+    
+    
+    //listen(sockfd, BACKLOG);
+    //new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
+
 
     // ready to communicate on socket descriptor new_fd!
   } 

@@ -6,7 +6,8 @@ void getHTMLFile(char *buffer) {
 
   FILE *f1;
   f1= fopen("/home/webertr/Github/epicsPVServer/var/html_file.html", "r" );
-
+  //f1= fopen("/home/webertr/Github/epicsPVServer/var/xml_test.xml", "r" );
+  
   //char *fgets( char *buf, int n, FILE *fp );
   //char *temp = fgets(buffer, 100, f1);
 

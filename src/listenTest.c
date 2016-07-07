@@ -8,18 +8,30 @@
 #include <netinet/in.h>
 #include <myfunctions.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #define MYPORT "3490" // the port users will be connecting to
 #define BACKLOG 10 // how many pending connections queue will hold
 
-// get sockaddr, IPv4 or IPv6:
-void *get_in_addr(struct sockaddr *sa)
-{
-    if (sa->sa_family == AF_INET) {
-        return &(((struct sockaddr_in*)sa)->sin_addr);
-    }
 
-    return &(((struct sockaddr_in6*)sa)->sin6_addr);
+static void unix_error(char *msg) {
+
+  fprintf(stderr, "%s: %s\n", msg, strerror(errno));
+  exit(0);
+
+}
+
+
+// A wrapper for the fork function
+static pid_t Fork()
+{
+
+  pid_t retpid;
+  if (retpid = fork() < 0)
+    unix_error("fork error");
+
+  return retpid;
+
 }
 
 
@@ -41,12 +53,6 @@ void listenTest(void) {
   // get HTML string in htmlMessage to send to client
   getHTMLFile(htmlMessage);
 
-  // calling caget to get a pv value returned as a string in pvValue
-  cagetFuZE(pv_Read, pvValue);
-
-  // inserting PV value into the html message in place
-  swapCharArray(htmlMessage, "[1##]", pvValue);
-
  
   // !! don't forget your error checking for these calls !!
   // first, load up address structs with getaddrinfo():
@@ -56,17 +62,24 @@ void listenTest(void) {
   hints.ai_flags = AI_PASSIVE; // fill in my IP for me
   getaddrinfo(NULL, MYPORT, &hints, &res);
 
-  // make a socket, bind it, and listen on it:
+  // make a socket, bind it, and listen on it (later):
   sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   bind(sockfd, res->ai_addr, res->ai_addrlen);
 
+  // ???
   addr_size = sizeof their_addr;
 
   while (1) {
 
 
-    pid = fork();
+    pid = Fork();
     if ( pid == 0 ) { // this is the child process
+
+        // calling caget to get a pv value returned as a string in pvValue
+      cagetFuZE(pv_Read, pvValue);
+
+      // inserting PV value into the html message in place
+      swapCharArray(htmlMessage, "[1##]", pvValue);
 
       // wait for a request
       listen(sockfd, BACKLOG);
@@ -74,16 +87,9 @@ void listenTest(void) {
       // ???
       new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size);
 
-      // get IP Address code
-      inet_ntop(their_addr.ss_family,
-	      get_in_addr((struct sockaddr *)&their_addr),
-	      s, sizeof s);
-      printf("server: got connection from %s\n", s);
-
       // send HTML Message
       len = strlen(htmlMessage);
       bytes_sent = send(new_fd, htmlMessage, len, 0);
-      printf("\n %d Bytes Sent\n", bytes_sent);
 
       // Sleep. if I don't sleep before close(new_fd), message doesn't always make it
       sleep(1);

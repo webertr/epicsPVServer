@@ -215,6 +215,9 @@ void cagetFuZE(char *pvName, char *pvValue) {
       }
     }
 
+  // Does this kill the connection??
+  ca_context_destroy();
+  
   sprintf(pvValue, "%s\n", val2str(pvs[0].value, pvs[0].dbrType, 0));
 
   return;

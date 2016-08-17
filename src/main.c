@@ -1,63 +1,235 @@
-/*
- * tiny.c - A simple, iterative HTTP/1.0 Web server that uses the
- *GET method to serve static and dynamic content.
-*/
+/****************************************************************************
+ * simpleWebServer.c - A simple, iterative HTTP/1.0 Web server that uses the
+ * GET method to serve static and dynamic content.
+ ***************************************************************************/
 
 
 //#include <stdio.h>
 //#include <myfunctions.h>
 
-#include <csapp.h>
+#include <csapp.h> // Header file that contains everything that will be needed
 
-void doit(int fd);
-void read_requesthdrs(rio_t *rp);
-int parse_uri(char *uri, char *filename, char *cgiargs);
-void serve_static(int fd, char *filename, int filesize);
-void get_filetype(char *filename, char *filetype);
-void serve_dynamic(int fd, char *filename, char *cgiargs);
-void clienterror(int fd, char *cause, char *errnum,
+void doit(int fd);                                           // Function declaration
+void read_requesthdrs(rio_t *rp);                            // Function declaration
+int parse_uri(char *uri, char *filename, char *cgiargs);     // Function declaration
+void serve_static(int fd, char *filename, int filesize);     // Function declaration
+void get_filetype(char *filename, char *filetype);           // Function declaration
+void serve_dynamic(int fd, char *filename, char *cgiargs);   // Function declaration
+void clienterror(int fd, char *cause, char *errnum,          // Function declaration
 		 char *shortmsg, char *longmsg);
 
 
-//3490 Port to use, I guess.
+
+/******************************************************************************
+ * Function: main
+ * Inputs: int, char**
+ * Returns: None
+ * Description: This is a simple web server, that will serve up some PV 
+ * (Process Variable, EPICS)  information
+ ******************************************************************************/
 
 int main(int argc, char **argv)
 {
-  int listenfd, connfd, port, clientlen;
-  struct sockaddr_in clientaddr;
+  int listenfd,                      // listenfd is a file descriptor
+    connfd,                          // connfd is a file descriptor
+    port,                            // The port that will be used for the simple web server (3490?).
+    clientlen;                       // listenfd is a file descriptor
 
-  /* Check command line args */
+  struct sockaddr_in clientaddr;     // This is defined in <netinet/in.h>. This is a basic structure
+                                     // for system calls that deal with internet addresses
+  /*
+  struct sockaddr_in {
+    short            sin_family;   // e.g. AF_INET
+    unsigned short   sin_port;     // e.g. htons(3490)
+    struct in_addr   sin_addr;     // see struct in_addr, below
+    char             sin_zero[8];  // zero this if you want to
+  };
+
+  struct in_addr {
+    unsigned long s_addr;  // load with inet_aton()
+  };
+  */
+
+  // Checks to see if only 1 command line argument was sent. argc is the "argument count"
+  // Always at least 1, because the name of the program counts as an argument
+  // argv is the argument vector. argv[0] has the file name.
   if (argc != 2) {
+
+    // fprintf sends information to a stream (like a file, a data structure). In this case, it is
+    // the standard error stream, stderr. stderr is a FILE *, or a file data structure pointer.
     fprintf(stderr, "usage: %s <port>\n", argv[0]);
     exit(1);
   }
   
-  port = atoi(argv[1]);
+  port = atoi(argv[1]); // Converts a character pointer to an integer. In <stdlib.h>
 
-  listenfd = Open_listenfd(port);
+  listenfd = Open_listenfd(port); // Wrapper to open_listenfd. listenfd is a helper function for:
+                                  // socket (create a socket), bind (bind it to a socket address
+                                  // structure), listen (make it a listening socket), and return
+                                  // the socket descriptor.
 
+  // Infinite while loop to handle connections.
   while (1) {
-    clientlen = sizeof(clientaddr);
+    
+    clientlen = sizeof(clientaddr);                             // Gets length of clientaddr structure
+
+    // Accept is a helper function for accept.
     connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-    //doit(connfd);
-    //Close(connfd);
+    doit(connfd);
+    Close(connfd);
   }
   
 }
 
 
+/************************************************************************************** 
+ * Function: Open_listend
+ * Inputs: int port
+ * Returns: int listenfd (a listen file descriptor)
+ * Description: A wrapper to the open_listenfd function. Provides error handling
+ **************************************************************************************/
 
-/************************** 
- * Error-handling functions
- **************************/
-/* $begin errorfuns */
-/* $begin unixerror */
-void unix_error(char *msg) /* Unix-style error */
+int Open_listenfd(int port)
 {
-  fprintf(stderr, "%s: %s\n", msg, strerror(errno));
+
+  int listenfd;
+
+  listenfd = open_listenfd(port);
+
+  if (listenfd < 0) {
+    
+    unix_error("listen Error");
+
+  }
+
+  return listenfd;
+
+}
+
+
+/************************************************************************************** 
+ * Function: open_listend
+ * Inputs: int port
+ * Returns: int listenfd (a listen file descriptor)
+ * Description: A helper function for socket, bind and listen. This will create a listen
+ * descriptor that is ready to receive connections on the port.
+ **************************************************************************************/
+
+int open_listenfd(int port) {
+
+  int listenfd,                    // the listening socket descriptor
+    optval=1;
+  struct sockaddr_in serveraddr;   // This is defined in <netinet/in.h>. This is a basic structure
+                                   // for system calls that deal with internet addresses
+
+  // socket creates a socket descriptor. AF_INET indiciates we are using the internet.
+  // SOCK_STREAM indicates that the socket will be the end point of an internet connection.
+  listenfd = socket(AF_INET, SOCK_STREAM, 0); //
+
+  // From the perspective of the Unix kernel, a socket is an end point for communication.
+  // From the perspective of a Unix program, a socket is an open file with a corresponding descriptor.
+
+  // This verifies that the socket descriptor is not < 0, indicating an error.
+  if (listenfd  < 0) {
+    
+    return -1;
+
+  }
+
+  // Eliminates "Address already in use" error from bind 
+  // The setsockopt allows us to immediatley restart a server after terminating. Usually it takes
+  // 30 seconds
+  if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
+		 (const void *)&optval , sizeof(int)) < 0) {
+    
+    return -1;
+
+  }
+
+  // Listenfd will be an end point for all requests to port on any IP address for this host
+  // The bzero() function sets the first n bytes of the area starting at s
+  // to zero (bytes containing '\0') It is in <string.h>
+  // Maybe this zeros the structure???
+  bzero((char *) &serveraddr, sizeof(serveraddr));
+
+  // Setting the structure to different values
+  serveraddr.sin_family = AF_INET;
+  // htonl goees from host byte order to network byte order
+  // INADDR_ANY tells the kernel that this server will accept requests to any of the IP
+  // addresses for this host.
+  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+  serveraddr.sin_port = htons((unsigned short)port);
+
+  // The bind function tells the kernel to associate the server’s socket address
+  // in serveraddr with the socket descriptor listenfd. The addrlen argument is sizeof(sockaddr).
+  if (bind(listenfd, (SA *)&serveraddr, sizeof(serveraddr)) < 0) {
+
+    return -1;
+
+  }
+  
+  // Make it a listening socket ready to accept connection requests
+  // By default, the kernel assumes that a descriptor created by the socket function corresponds
+  // to an active socket that will live on the client end of a connection. A server calls the listen
+  // function to tell the kernel that the descriptor will be used by a server instead of a client.
+  if (listen(listenfd, LISTENQ) < 0) {
+    
+    return -1;
+
+  }
+  
+  return listenfd;  // Return the listening socket descriptor
+
+}
+
+
+/************************************************************************************** 
+ * Function: unix_error
+ * Inputs: char *
+ * Returns: None
+ * Description: You pass this function a character pointer, and it outputs it to stderr.
+ **************************************************************************************/
+
+void unix_error(char *msg)
+{
+  // When main function gets evoked, you have 3 streams already: Input (stdin), Output (stdout)
+  // and Error (stderr). A stream is a data structure. Files are represented as streams.
+  // FILE is defined in stdio.h. A FILE object holds information about the file. possition, buffering.
+  // fprintf sends formatted output to a stream. The w %s's are filled in with the two following values.
+  // strerror returns a pointer to a string that corresponds to the error code.
+  // errno is set by system calls.
+  fprintf(stderr, "%s: %s\n", msg, strerror(errno)); //
   exit(0);
 }
-/* $end unixerror */
+
+
+
+/************************************************************************************** 
+ * Function: Accept
+ * Inputs: int, struct sockaddr, socklen_t
+ * Returns: int (connected descriptor (NOT listening descriptor, which never changes))
+ * Description: A wrapper to the accept function. The accept function waits for a connection request 
+ * from a client to arrive on the listening descriptor listenfd, then fills in the client’s socket 
+ * address in addr, and returns a connected descriptor that can be used to communicate with the client
+ * using Unix I/O functions.
+ **************************************************************************************/
+
+int Accept(int s, struct sockaddr *addr, socklen_t *addrlen) {
+
+  int retint;  // Connected descriptor used for communication with client
+
+  // #include <sys/socket.h>
+  // int accept(int listenfd, struct sockaddr *addr, int *addrlen);
+  // Returns: nonnegative connected descriptor if OK, −1 on error
+  retint = accept(s, addr, addrlen);
+
+  if (retint < 0) {
+    
+    unix_error("Accept Error");
+
+  }
+
+}
 
 
 void doit(int fd)
@@ -69,7 +241,6 @@ void doit(int fd)
   char filename[MAXLINE], cgiargs[MAXLINE];
   rio_t rio;
 
-  
   /* Read request line and headers */
   Rio_readinitb(&rio, fd);
   Rio_readlineb(&rio, buf, MAXLINE);
@@ -86,6 +257,8 @@ void doit(int fd)
   /* Parse URI from GET request */
   is_static = parse_uri(uri, filename, cgiargs);
 
+  fprintf(stderr, filename);
+    
   if (stat(filename, &sbuf) < 0) {
     clienterror(fd, filename, "404", "Not found",
 		"Tiny couldn’t find this file");
@@ -137,10 +310,10 @@ void clienterror(int fd, char *cause, char *errnum,
 void read_requesthdrs(rio_t *rp)
 {
   char buf[MAXLINE];
-  Rio_readlineb(rp, buf, MAXLINE);
+  rio_readlineb(rp, buf, MAXLINE);
 
   while(strcmp(buf, "\r\n")) {
-    Rio_readlineb(rp, buf, MAXLINE);
+    rio_readlineb(rp, buf, MAXLINE);
     printf("%s", buf);
   }
 
@@ -244,8 +417,14 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
 int Open(const char *pathname, int flags, mode_t mode) {
 
   int retint;
-  if (retint = open(pathname, flags, mode) < 0)
+
+  retint = open(pathname, flags, mode);
+
+  if (retint < 0) {
+    
     unix_error("Open Error");
+
+  }
 
   return retint;
 
@@ -276,10 +455,14 @@ int Dup2(int fd1, int fd2) {
 pid_t Wait(int *status) {
 
   pid_t retpid;
-
-  if (retpid = wait(status) < 0)
+  
+  retpid = wait(status);
+  if (retpid  < 0) {
+    
     unix_error("wait Error");
 
+  }
+  
   return retpid;
 
 }
@@ -301,42 +484,20 @@ void Rio_writen(int fd, void *usrbuf, size_t n) {
 
 }
 
-int Accept(int s, struct sockaddr *addr, socklen_t *addrlen) {
-
-  int retint;
-
-  if (retint = accept(s, addr, addrlen) < 0)
-    unix_error("Accept Error and Corndogs");
-
-}
-
-void Rio_readinitb(rio_t *rp, int fd) {
-
-  rio_readinitb(rp, fd);
-
-}
-
-
-ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) {
-
-  ssize_t retsize;
-
-  if (retsize = rio_readlineb(rp, usrbuf, maxlen))
-    unix_error("readlineb Error");
-
-  return retsize;
-
-}
-
-
 
 pid_t Fork()
 {
 
   pid_t retpid;
-  if (retpid = fork() < 0)
+
+  retpid = fork();
+  
+  if (retpid < 0) {
+    
     unix_error("fork error");
 
+  }
+  
   return retpid;
 
 }
@@ -345,51 +506,6 @@ pid_t Fork()
 void Close(int fd) {
 
   close(fd);
-
-}
-
-
-// A wrapper for the open function
-int Open_listenfd(int port)
-{
-
-  int retint;
-  if (retint = open_listenfd(port) < 0)
-    unix_error("listen Error");
-
-  return retint;
-
-}
-
-
-
-int open_listenfd(int port)
-{
-  int listenfd, optval=1;
-  struct sockaddr_in serveraddr;
-
-  /* Create a socket descriptor */
-  if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    return -1;
-  /* Eliminates "Address already in use" error from bind */
-  if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,
-		 (const void *)&optval , sizeof(int)) < 0)
-    return -1;
-
-  /* Listenfd will be an end point for all requests to port
-     on any IP address for this host */
-  bzero((char *) &serveraddr, sizeof(serveraddr));
-  serveraddr.sin_family = AF_INET;
-  serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serveraddr.sin_port = htons((unsigned short)port);
-  if (bind(listenfd, (SA *)&serveraddr, sizeof(serveraddr)) < 0)
-    return -1;
-
-  /* Make it a listening socket ready to accept connection requests */
-  if (listen(listenfd, LISTENQ) < 0)
-    return -1;
-
-  return listenfd;
 
 }
 
@@ -448,6 +564,22 @@ ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n)
 }
 
 
+ssize_t Rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) {
+
+  ssize_t retsize;
+
+  retsize = rio_readlineb(rp, usrbuf, maxlen);
+
+  if (retsize < 0) {
+    
+    unix_error("readlineb Error");
+
+  }
+
+  return retsize;
+
+}
+
 
 ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen)
 {
@@ -473,6 +605,14 @@ ssize_t rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen)
   return n;
 
 }
+
+
+void Rio_readinitb(rio_t *rp, int fd) {
+
+  rio_readinitb(rp, fd);
+
+}
+
 
 void rio_readinitb(rio_t *rp, int fd)
 {

@@ -1,4 +1,4 @@
-# #objects = $(addprefix $(OBJDIR)/, bindSocketTest.o getHTMLFile.o listenTest.o main.o printIPAddress.o socketTest.o)
+# #objects = $(addprefix $(OBJDIR)/, bindSocketTest.o getHTMLFile.o listenTest.o simpleWebServer.o printIPAddress.o socketTest.o)
 
 INCLUDEDIR = $(shell pwd)/include
 # SRCDIR = $(shell pwd)/src
@@ -19,7 +19,7 @@ INC = -I$(INCLUDEDIR) -I/usr/src/epics/base-3.15.3/include -I/usr/src/epics/base
 LIBS = -lpthread -ldbCore -lca -lCom
 LIBSDIR = -L$(PATH1)
 
-_OBJS = simpleWebServer.o getHTMLFile.o listenTest.o tool_lib.o cagetfuze.o
+_OBJS = simpleWebServer.o getHTMLFile.o robustIO.o tool_lib.o cagetfuze.o
 OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 
 pv_server: $(OBJS)

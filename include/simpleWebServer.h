@@ -1,4 +1,8 @@
-/* $begin simpleWebServer.h */
+/****************************************************************************
+ * simpleWebServer.h - 
+ * 
+ ***************************************************************************/
+
 #ifndef __SIMPLEWEBSERVER_H__
 #define __SIMPLEWEBSERVER_H__
 
@@ -6,6 +10,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <netdb.h>
+#include <robustIO.h>
 
 /* Simplifies calls to bind(), connect(), and accept() */
 /* $begin sockaddrdef */
@@ -21,6 +26,18 @@ extern char **environ; /* Defined by libc */
 #define MAXLINE 8192  /* Max text line length */
 #define MAXBUF   8192  /* Max I/O buffer size */
 #define LISTENQ  1024  /* Second argument to listen() */
+
+
+// Functions for simple webserver:
+void doit(int fd);                                           // Function declaration
+void read_requesthdrs(rio_t *rp);                            // Function declaration
+int parse_uri(char *uri, char *filename, char *cgiargs);     // Function declaration
+void serve_static(int fd, char *filename, int filesize);     // Function declaration
+void get_filetype(char *filename, char *filetype);           // Function declaration
+void serve_dynamic(int fd, char *filename, char *cgiargs);   // Function declaration
+void clienterror(int fd, char *cause, char *errnum,          // Function declaration
+		 char *shortmsg, char *longms);
+
 
 /* Our own error-handling functions */
 void unix_error(char *msg);
@@ -79,8 +96,8 @@ int Open_listenfd(int port);
 
 
 
-#endif /* __SIMPLEWEBSERVER_H__ */
-/* $end csapp.h */
+#endif
+
 
 
 

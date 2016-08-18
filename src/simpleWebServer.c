@@ -10,15 +10,6 @@
 #include <simpleWebServer.h> // Header file that contains everything that will be needed
 #include <robustIO.h>
 
-void doit(int fd);                                           // Function declaration
-void read_requesthdrs(rio_t *rp);                            // Function declaration
-int parse_uri(char *uri, char *filename, char *cgiargs);     // Function declaration
-void serve_static(int fd, char *filename, int filesize);     // Function declaration
-void get_filetype(char *filename, char *filetype);           // Function declaration
-void serve_dynamic(int fd, char *filename, char *cgiargs);   // Function declaration
-void clienterror(int fd, char *cause, char *errnum,          // Function declaration
-		 char *shortmsg, char *longmsg);
-
 
 
 /******************************************************************************

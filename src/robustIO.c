@@ -35,7 +35,7 @@ ssize_t rio_writen(int fd, void *usrbuf, size_t n)
 }
 
 
-ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n)
+static ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n)
 {
   int cnt;
 

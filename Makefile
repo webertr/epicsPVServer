@@ -22,6 +22,8 @@ LIBSDIR = -L$(PATH1)
 _OBJS = simpleWebServer.o robustIO.o tool_lib.o cagetfuze.o
 OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 
+all: pv_server adder
+
 pv_server: $(OBJS)
 	$(CC) -o pv_server $(OBJS) $(INC) $(LIBSDIR) $(LIBS)
 
@@ -29,6 +31,9 @@ $(ODIR)/%.o: $(SDIR)/%.c
 	$(CC) -c -o $@ $< $(INC)
 
 .PHONY: clean
+
+adder: $(SDIR)/adder.c
+	$(CC) -o cgi-bin/adder $(SDIR)/adder.c $(INC) $(LIBSDIR) $(LIBS)
 
 clean:
 	rm -f $(ODIR)/*.o

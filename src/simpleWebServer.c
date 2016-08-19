@@ -279,18 +279,18 @@ void doit(int fd)
 
   }
 
-  if (is_static) { // Serve static content (just get a file and output it
+  if (is_static) { // Serve static content (just get a file and output it to client)
 
     if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) { // sbuf struct was filled by stat()
       clienterror(fd, filename, "403", "Forbidden",              // function earlier 
 		  "Tiny couldn’t read the file");
       return;
     }
-    serve_static(fd, filename, sbuf.st_size); 
+    serve_static(fd, filename, sbuf.st_size); // finds file and outputs it to client with headers
   }
-  else { /* Serve dynamic content */
-    if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
-      clienterror(fd, filename, "403", "Forbidden",
+  else { // Serve dynamic content
+    if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) { // sbuf struct says you can't access
+      clienterror(fd, filename, "403", "Forbidden",              // output error to client
 		  "Tiny couldn’t run the CGI program");
       return;
     }
@@ -436,13 +436,14 @@ void serve_static(int fd, char *filename, int filesize)
  * Inputs: char *, char *
  * Returns: void
  * Description: It takes a filename, and figures out if it is text/html, or a image/gif
+ * then writes this to the char * filetype
  **************************************************************************************/
 
 void get_filetype(char *filename, char *filetype)
 {
   
   if (strstr(filename, ".html"))      // strstr returns pointer to first instance of char *
-    strcpy(filetype, "text/html");
+    strcpy(filetype, "text/html");    // strcpy copies one string to another
   else if (strstr(filename, ".gif"))
     strcpy(filetype, "image/gif");
   else if (strstr(filename, ".jpg"))
@@ -452,6 +453,14 @@ void get_filetype(char *filename, char *filetype)
 
 }
 
+
+/************************************************************************************** 
+ * Function: serve_dynamic
+ * Inputs: int, char *, char *
+ * Returns: void
+ * Description: Writes some headers to the client, then forks a child to run a binary
+ * which outputs stuff to the user
+ **************************************************************************************/
 
 void serve_dynamic(int fd, char *filename, char *cgiargs)
 {
@@ -463,7 +472,7 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
   sprintf(buf, "Server: Tiny Web Server\r\n");
   Rio_writen(fd, buf, strlen(buf));
 
-  if (Fork() == 0) { // This is the child
+  if (Fork() == 0) {                      // This is the child
     setenv("QUERY_STRING", cgiargs, 1);   // Real server would set all CGI vars here
     Dup2(fd, STDOUT_FILENO);              // Redirect stdout to client
     Execve(filename, emptylist, environ); // Run CGI program
@@ -474,20 +483,12 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
 }
 
 
-int Open(const char *pathname, int flags, mode_t mode) {
-
-  int retint;
-
-  retint = open(pathname, flags, mode);
-
-  if (retint < 0) {
-    unix_error("Open Error");
-  }
-
-  return retint;
-
-}
-
+/************************************************************************************** 
+ * Function: Mmap
+ * Inputs: void *, size_t, int, int, int, off_t
+ * Returns: None 
+ * Description: This is just a wrapper function for mmap
+ **************************************************************************************/
 
 void *Mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
 
@@ -496,6 +497,13 @@ void *Mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
 }
 
 
+/************************************************************************************** 
+ * Function: Munmap
+ * Inputs: void *, size_t
+ * Returns: None 
+ * Description: This is just a wrapper function for munmap
+ **************************************************************************************/
+
 void Munmap(void *start, size_t length) {
 
   munmap(start, length);
@@ -503,12 +511,26 @@ void Munmap(void *start, size_t length) {
 }
 
 
+/************************************************************************************** 
+ * Function: Dup2
+ * Inputs: int, int
+ * Returns: int
+ * Description: This is just a wrapper function for dup2
+ **************************************************************************************/
+
 int Dup2(int fd1, int fd2) {
 
   dup2(fd1, fd2);
 
 }
 
+
+/************************************************************************************** 
+ * Function: Wait
+ * Inputs: int *
+ * Returns: None 
+ * Description: This is just a wrapper function for wait
+ **************************************************************************************/
 
 pid_t Wait(int *status) {
 
@@ -524,13 +546,26 @@ pid_t Wait(int *status) {
 }
 
 
+/************************************************************************************** 
+ * Function: Execve
+ * Inputs: char *, char *, char *
+ * Returns: None 
+ * Description: This is just a wrapper function for execve
+ **************************************************************************************/
+
 void Execve(const char *filename, char *const argv[], char *const envp[]) {
 
-  execve(filename, argv, envp);
+  execve(filename, argv, envp); // calls binary at filename
 
 }
 
 
+/************************************************************************************** 
+ * Function: Fork
+ * Inputs: None
+ * Returns: None 
+ * Description: This is just a wrapper function for fork().
+ **************************************************************************************/
 
 pid_t Fork()
 {
@@ -547,6 +582,35 @@ pid_t Fork()
 
 }
   
+
+/************************************************************************************** 
+ * Function: Open
+ * Inputs: None
+ * Returns: None 
+ * Description: This is just a wrapper function for open().
+ **************************************************************************************/
+
+int Open(const char *pathname, int flags, mode_t mode) {
+
+  int retint;
+
+  retint = open(pathname, flags, mode);
+
+  if (retint < 0) {
+    unix_error("Open Error");
+  }
+
+  return retint;
+
+}
+
+
+/************************************************************************************** 
+ * Function: Close
+ * Inputs: None
+ * Returns: None 
+ * Description: This is just a wrapper function for close().
+ **************************************************************************************/
 
 void Close(int fd) {
 

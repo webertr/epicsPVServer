@@ -131,4 +131,157 @@ A network is a type of a "file" called a socket.
 
 The problems with the standard I/O and sockets happen b/c sockets are full-duplex, meaning you can both read and write on the same socket.
 
-An input function cannot 
+An input function cannot following an output function without resetting current file position or flushing buffer for standard I/O.
+
+
+
+Chapter 11 - Networking Programming from Bryant Computer Systems
+
+These are my notes on this chapter.
+
+Network application use client-server model.
+
+Fundamental thing is a transaction, between the client and server.
+Transaction:
+Client sends request
+Server receives request, and manipulates it resources in the approriate way.
+Server sends a response to the client, then waits for the next request.
+The Client receives the response and manipulates it.
+
+An IP address is stored as a structure. This is an unforunate historical fact.
+
+
+A socket is the end point of a connection.
+Each socket has a socket address, which consists of an IP address, and a 16-bit port number. It is denoted address:port.
+
+/etc/services contains a list of well-known ports.
+
+A connection is uniquely defined by it's pair of socket address. You can think of it as a tuple.
+
+A "socket interface" is a set of functions that is used in conjunction with the Unix I/O functions to build network applications.
+
+Overview of the socket interface:
+
+Client	    	Server
+socket	    	socket
+	    	bind
+	    	listen
+connect->   	accept
+rio_written->	rio_readlineb
+rio_readlineb	<-rio_written
+close -> EOF	rio_readlineb
+      	 	close -> goes back to accept
+
+
+In the code, a "socket" is just an open file, with a descriptor.
+From the kernel's prespective, a socket is an end point for communication.
+
+connect, bind and accept require a pointer to a protocol specific socket address structure. In order for these to work for anytime of sockets (no void * at the time), they defined a generic
+sockaddr structure:
+typedef struct sockaddr SA;
+So, anytime you give your socket, you have to cast it to this generic socket structure SA,
+(SA *) your_socket
+
+#include <sys/types.h>
+#include <sys/socket.h>
+int socket(int domain, int type, int protocol);
+Returns: nonnegative descriptor if OK, −1 on error
+
+This creates and returns a socket descriptor, based on the domain, type and protocol.
+
+This is what we will be using:
+clientfd = Socket(AF_INET, SOCK_STREAM, 0);
+
+AF_INET = the internet
+SOCK_STREAM = this socket is an endpoint for an internet connection
+0 = ???
+Remember, the capitali Socket, just means this is an error-handling wrapper function.
+
+We can't use the socket yet until we finalize it. How we finalize it depends on if we are a server or client.
+
+#include <sys/socket.h>
+int connect(int sockfd, struct sockaddr *serv_addr, int addrlen);
+Returns: 0 if OK, −1 on error
+
+connect attempts to establish a connection with a server at socket address, serv_addr.
+If it is successful, then the socket characterized by the descriptor, sockfd, is now ready to read and write to/from.
+
+
+The socket and connect function gets wrapped in a helper,
+int open_clientfd(char *hostname, int port);
+Returns: descriptor if OK, −1 on Unix error, −2 on DNS error
+
+int bind(int sockfd, struct sockaddr *my_addr, int addrlen);
+Returns: 0 if OK, −1 on error
+
+The bind function tells the kernel to associate the server’s socket address in my_addr with the socket descriptor sockfd. The addrlen argument is sizeof(sockaddr_in).
+So you make a socket, with socket(), then take that socket descriptor and combine it with a struc sockaddr *my_addr.
+
+#include <sys/socket.h>
+int listen(int sockfd, int backlog);
+Returns: 0 if OK, −1 on error
+
+By default, the kernel assumes that the socket will be a client. By calling liste() on teh socket descriptor, you let the kernel know that this will be a server socket.
+So the kernel assumes a "Active Socket". By calling listen, it chagnes it to a "Listening Socket".
+backlog says the number of connections it should que before refusing.
+
+int open_listenfd(int port);
+Returns: descriptor if OK, −1 on Unix error
+This combines socket, bind, and listen.
+
+#include <sys/socket.h>
+int accept(int listenfd, struct sockaddr *addr, int *addrlen);
+Returns: nonnegative connected descriptor if OK, −1 on error
+
+The accept function waits for a connection request from a client to arrive on the listening descriptor listenfd, then fills in the client’s socket address in addr, and returns a connected descriptor that can be used to communicate with the client using Unix I/O functions.
+
+Important point. THe accept function returns a connected descriptor, which describes the connection.
+The listening descriptor describes the socket for the server that is listening. It descrbies the end point for the client connection requests.
+
+A web server can provide content in 1 of 2 ways:
+
+1) Fetch a file from a disk, and send it to teh client (static content)
+2) Run an executable and send the contents to the client (dynamic content)
+
+An http request has the form:
+<method> <uri> <version>
+
+method = GET, POST, OPTIONS, etc.
+uri = URL, includes filename and optional arguments
+
+An http response:
+<version> <status code> <status message>
+
+status code = 3 digit number indiciates disposition of the request (OK, Bad request, etc..)
+status message = English equivalent of the error code
+
+Common Gateway Interface (CGI) standard for serving dynamic content.
+
+'?' separates filename from arguments.
+'&' symbol separates each argument
+spaces not allowed.
+
+example:
+GET /cgi-bin/adder?15000&213 HTTP/1.1
+
+After the server receives the above, it calls fork to create a child process and calls execve to run the /cgi-bin/adder program in the context of the child. Programs like the adder program are often referred to as CGI programs because they obey the rules of the CGI standard. And since many CGI programs are written as Perl scripts, CGI programs are often called CGI scripts. Before the call to execve, the child process sets the CGI environment variable QUERY_STRING to “15000&213”, which the adder program can reference at run time using the Unix getenv function.
+
+
+The cgi program looks for environment variables, like
+QUERY_STRING	      	  Program arguments
+SERVER_PORT		  Port that the parent is listening on
+REQUEST_METHOD		  GET or POST
+REMOTE_HOST		  Domain name of client
+REMOTE_ADDR		  Dotted-decimal IP address of client
+CONTENT_TYPE		  POST only: MIME type of the request body
+CONTENT_LENGTH 		  POST only: Size in bytes of the request body
+
+I guess you can define this in the server program before calling execve from the forked child.
+
+Write them with,
+setenv("QUERY_STRING", cgiargs, 1);
+
+Read them with,
+buf = getenv("QUERY_STRING")
+
+

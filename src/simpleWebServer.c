@@ -60,13 +60,14 @@ int main(int argc, char **argv)
                                   // structure), listen (make it a listening socket), and return
                                   // the socket descriptor.
 
-  // Infinite while loop to handle connections.
-  while (1) {
+  while (1) {                     // Infinite while loop to handle connections.
     
-    clientlen = sizeof(clientaddr);                             // Gets length of clientaddr structure
+    clientlen = sizeof(clientaddr);     // Gets length of clientaddr structure
 
-    // Accept is a helper function for accept.
-    connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+    
+    connfd = Accept(listenfd,           // Accept is a helper function for accept.
+		    (SA *)&clientaddr,
+		    &clientlen);          
     doit(connfd);
     Close(connfd);
   }
@@ -103,8 +104,8 @@ int Open_listenfd(int port)
  * Function: open_listend
  * Inputs: int port
  * Returns: int listenfd (a listen file descriptor)
- * Description: A helper function for socket, bind and listen. This will create a listen
- * descriptor that is ready to receive connections on the port.
+ * Description: A helper function that combines socket, bind and listen. This will create 
+ * a listen descriptor that is ready to receive connections on the port.
  **************************************************************************************/
 
 int open_listenfd(int port) {
@@ -150,7 +151,8 @@ int open_listenfd(int port) {
   // INADDR_ANY tells the kernel that this server will accept requests to any of the IP
   // addresses for this host.
   serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serveraddr.sin_port = htons((unsigned short)port);
+  serveraddr.sin_port = htons((unsigned short)port); // assigns the port number to the socket address
+                                                     // structure
 
   // The bind function tells the kernel to associate the server’s socket address
   // in serveraddr with the socket descriptor listenfd. The addrlen argument is sizeof(sockaddr).
@@ -493,12 +495,37 @@ void Close(int fd) {
 }
 
 
+/************************************************************************************** 
+ * Function: open_clientfd
+ * Inputs: char *, int
+ * Returns: int 
+ * Description: This is a helper function that combines socket and connect functions
+ * to basically create a socket, and connect it to a host at some port.
+ **************************************************************************************/
 
+int open_clientfd(char *hostname, int port) {
 
+  int clientfd;
+  struct hostent *hp;
+  struct sockaddr_in serveraddr;
 
-/* int main(void) { */
-/*   listenTest(); */
-  
-/*   return 0; */
-/* } */
+  if ((clientfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    return -1; /* Check errno for cause of error */
+
+  /* Fill in the server’s IP address and port */
+  if ((hp = gethostbyname(hostname)) == NULL)
+    return -2; /* Check h_errno for cause of error */
+  bzero((char *) &serveraddr, sizeof(serveraddr));
+  serveraddr.sin_family = AF_INET;
+  bcopy((char *)hp->h_addr_list[0],
+	(char *)&serveraddr.sin_addr.s_addr, hp->h_length);
+  serveraddr.sin_port = htons(port);
+
+  /* Establish a connection with the server */
+  if (connect(clientfd, (SA *) &serveraddr, sizeof(serveraddr)) < 0)
+    return -1;
+  return clientfd;
+
+}
+
 

@@ -19,7 +19,7 @@ INC = -I$(INCLUDEDIR) -I/usr/src/epics/base-3.15.3/include -I/usr/src/epics/base
 LIBS = -lpthread -ldbCore -lca -lCom
 LIBSDIR = -L$(PATH1)
 
-_OBJS = simpleWebServer.o getHTMLFile.o robustIO.o tool_lib.o cagetfuze.o
+_OBJS = simpleWebServer.o robustIO.o tool_lib.o cagetfuze.o
 OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 
 pv_server: $(OBJS)

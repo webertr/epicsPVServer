@@ -68,8 +68,13 @@ int main(int argc, char **argv)
     connfd = Accept(listenfd,           // Accept is a helper function for accept.
 		    (SA *)&clientaddr,
 		    &clientlen);          
-    doit(connfd);
-    Close(connfd);
+
+    
+    doit(connfd); // Function called to perform the actions requested by the client on connection
+                  // Descriptor connfd
+
+    Close(connfd); // Close connection after action is performed 
+    
   }
   
 }
@@ -189,7 +194,7 @@ void unix_error(char *msg)
   // When main function gets evoked, you have 3 streams already: Input (stdin), Output (stdout)
   // and Error (stderr). A stream is a data structure. Files are represented as streams.
   // FILE is defined in stdio.h. A FILE object holds information about the file. possition, buffering.
-  // fprintf sends formatted output to a stream. The w %s's are filled in with the two following values.
+  // fprintf sends formatted output to a stream.The w %s's are filled in with the two following values
   // strerror returns a pointer to a string that corresponds to the error code.
   // errno is set by system calls.
   fprintf(stderr, "%s: %s\n", msg, strerror(errno)); //
@@ -226,46 +231,62 @@ int Accept(int s, struct sockaddr *addr, socklen_t *addrlen) {
 }
 
 
+/************************************************************************************** 
+ * Function: doit
+ * Inputs: int (file descriptor
+ * Returns: void
+ * Description: This is a function called after Accept returns with a connection descriptor.
+ * It executes the request by reading from the connection descriptor, getting the method,
+ * an executing the method.
+ **************************************************************************************/
+
 void doit(int fd)
 {
 
-  int is_static;
-  struct stat sbuf;
+  int is_static; // holds the value indicating if it is a static of dynamic request
+  struct stat sbuf; // A structure defined in sys/stat.h or something that returns file info
   char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
   char filename[MAXLINE], cgiargs[MAXLINE];
-  rio_t rio;
+  rio_t rio; // A structure that contains the descriptor, buffer, unread bytes...Used for connection
 
   /* Read request line and headers */
-  Rio_readinitb(&rio, fd);
-  Rio_readlineb(&rio, buf, MAXLINE);
-  sscanf(buf, "%s %s %s", method, uri, version);
+  Rio_readinitb(&rio, fd); // Initialize the robust io structure, used for connection
+  Rio_readlineb(&rio, buf, MAXLINE); // Fills buffer, then reads line from connection
+  sscanf(buf, "%s %s %s", method, uri, version); // output read line into method, uri, version
+                                                 // the format for http requests.
 
-  if (strcasecmp(method, "GET")) {
+  if (strcasecmp(method, "GET")) { // If the method wasn't "GET". Only method supported
+    
     clienterror(fd, method, "501", "Not Implemented",
 		"Tiny does not implement this method");
     return;
+
   }
 
-  read_requesthdrs(&rio);
+  read_requesthdrs(&rio); // reads and ignored the request header
 
   /* Parse URI from GET request */
-  is_static = parse_uri(uri, filename, cgiargs);
-
-  fprintf(stderr, filename);
+  is_static = parse_uri(uri, filename, cgiargs); // Takes the char* ur, and extracts the filename, and
+                                                 // cgi arguments if dynamic content 
+ 
+  fprintf(stderr, filename);                     // Outputs the filename to the standard error stream
     
-  if (stat(filename, &sbuf) < 0) {
-    clienterror(fd, filename, "404", "Not found",
-		"Tiny couldn’t find this file");
+  if (stat(filename, &sbuf) < 0) { // Checks to see if file is there. Retrieves file information.
+    
+    clienterror(fd, filename, "404", "Not found", // client error returns an http formated message 
+		"Tiny couldn’t find this file");  // to the client, letting them know what happened
     return;
+
   }
 
-  if (is_static) { /* Serve static content */
-    if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
-      clienterror(fd, filename, "403", "Forbidden",
+  if (is_static) { // Serve static content (just get a file and output it
+
+    if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) { // sbuf struct was filled by stat()
+      clienterror(fd, filename, "403", "Forbidden",              // function earlier 
 		  "Tiny couldn’t read the file");
       return;
     }
-    serve_static(fd, filename, sbuf.st_size);
+    serve_static(fd, filename, sbuf.st_size); 
   }
   else { /* Serve dynamic content */
     if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
@@ -278,9 +299,85 @@ void doit(int fd)
 }
 
 
+/************************************************************************************** 
+ * Function: read_requesthdrs
+ * Inputs: rio_t (a structure to handle file I/O for the robust I/O)
+ * Returns: void
+ * Description: This function will read and ignore the request header. Has the format,
+ * <header name>: <header data>. Provides additional information
+ **************************************************************************************/
+
+void read_requesthdrs(rio_t *rp)
+{
+  char buf[MAXLINE];
+  rio_readlineb(rp, buf, MAXLINE); // reads line and fills buffer is necessary
+
+  while(strcmp(buf, "\r\n")) {    // are the strings equal, less then, or greater then
+                                  // The request header is terminated by an empty line
+
+    rio_readlineb(rp, buf, MAXLINE);
+    printf("%s", buf);
+
+  }
+
+  return;
+}
+
+
+/************************************************************************************** 
+ * Function: parse_uri
+ * Inputs: char *, char *, char *
+ * Returns: int
+ * Description: This function will break the uri down into cgi arguments, and a filename.
+ * It was also figure out if it is static or dynamic content.
+ **************************************************************************************/
+
+int parse_uri(char *uri, char *filename, char *cgiargs)
+{
+  char *ptr;
+
+  if (!strstr(uri, "cgi-bin")) { /* Static content */
+
+    strcpy(cgiargs, "");
+    strcpy(filename, ".");
+    strcat(filename, uri);
+
+    if (uri[strlen(uri)-1] == '/') {
+      strcat(filename, "home.html");
+    }
+    
+    return 1;
+  }
+  else { /* Dynamic content */
+
+    ptr = index(uri, '?');
+
+    if (ptr) {
+      strcpy(cgiargs, ptr+1);
+      *ptr = '\0';
+    }
+    else {
+      strcpy(cgiargs, "");
+    }
+    strcpy(filename, ".");
+    strcat(filename, uri);
+    return 0;
+  }
+}
+
+
+/************************************************************************************** 
+ * Function: clienterror
+ * Inputs: int, char *, char *, char *, char *
+ * Returns: void
+ * Description: This function will output some string messages, in html format, back to
+ * the client signfying something went wrong.
+ **************************************************************************************/
+
 void clienterror(int fd, char *cause, char *errnum,
 		 char *shortmsg, char *longmsg)
 {
+  
   char buf[MAXLINE], body[MAXBUF];
   /* Build the HTTP response body */
   sprintf(body, "<html><title>Tiny Error</title>");
@@ -301,56 +398,20 @@ void clienterror(int fd, char *cause, char *errnum,
 }
 
 
-void read_requesthdrs(rio_t *rp)
-{
-  char buf[MAXLINE];
-  rio_readlineb(rp, buf, MAXLINE);
-
-  while(strcmp(buf, "\r\n")) {
-    rio_readlineb(rp, buf, MAXLINE);
-    printf("%s", buf);
-  }
-
-  return;
-}
-
-
-
-
-int parse_uri(char *uri, char *filename, char *cgiargs)
-{
-  char *ptr;
-
-  if (!strstr(uri, "cgi-bin")) { /* Static content */
-    strcpy(cgiargs, "");
-    strcpy(filename, ".");
-    strcat(filename, uri);
-    if (uri[strlen(uri)-1] == '/')
-      strcat(filename, "home.html");
-    return 1;
-  }
-  else { /* Dynamic content */
-    ptr = index(uri, '?');
-    if (ptr) {
-      strcpy(cgiargs, ptr+1);
-      *ptr = '\0';
-    }
-    else
-      strcpy(cgiargs, "");
-    strcpy(filename, ".");
-    strcat(filename, uri);
-    return 0;
-  }
-
-}
-
+/************************************************************************************** 
+ * Function: serve_static
+ * Inputs: int, char *, int
+ * Returns: void
+ * Description: This function basically sends an header back to the client, then reads
+ * the text or image from the file, and sends that to the client as well.
+ **************************************************************************************/
 
 void serve_static(int fd, char *filename, int filesize)
 {
   int srcfd;
   char *srcp, filetype[MAXLINE], buf[MAXBUF];
 
-  /* Send response headers to client */
+  // Send response headers to client
   get_filetype(filename, filetype);
   sprintf(buf, "HTTP/1.0 200 OK\r\n");
   sprintf(buf, "%sServer: Tiny Web Server\r\n", buf);
@@ -358,23 +419,29 @@ void serve_static(int fd, char *filename, int filesize)
   sprintf(buf, "%sContent-type: %s\r\n\r\n", buf, filetype);
   Rio_writen(fd, buf, strlen(buf));
 
-  /* Send response body to client */
+  // Send response body to client
   srcfd = Open(filename, O_RDONLY, 0);
-  srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0);
-  Close(srcfd);
-  Rio_writen(fd, srcp, filesize);
-  Munmap(srcp, filesize);
+  srcp = Mmap(0, filesize, PROT_READ, MAP_PRIVATE, srcfd, 0); // Mmap function maps the contents of
+  Close(srcfd);                                               // the file to the char array, srcp
+  Rio_writen(fd, srcp, filesize);                             // Write char * to connection descriptor
+  Munmap(srcp, filesize);                                     // Remote mappings
 
+  // Mmap function helps I guess if the OS needs to switch out the memory, and doesn't have to do
+  // as much work??
 }
 
 
+/************************************************************************************** 
+ * Function: get_filetype
+ * Inputs: char *, char *
+ * Returns: void
+ * Description: It takes a filename, and figures out if it is text/html, or a image/gif
+ **************************************************************************************/
 
-/*
- * get_filetype - derive file type from file name
- */
 void get_filetype(char *filename, char *filetype)
 {
-  if (strstr(filename, ".html"))
+  
+  if (strstr(filename, ".html"))      // strstr returns pointer to first instance of char *
     strcpy(filetype, "text/html");
   else if (strstr(filename, ".gif"))
     strcpy(filetype, "image/gif");
@@ -382,6 +449,7 @@ void get_filetype(char *filename, char *filetype)
     strcpy(filetype, "image/jpeg");
   else
     strcpy(filetype, "text/plain");
+
 }
 
 
@@ -395,15 +463,13 @@ void serve_dynamic(int fd, char *filename, char *cgiargs)
   sprintf(buf, "Server: Tiny Web Server\r\n");
   Rio_writen(fd, buf, strlen(buf));
 
-  if (Fork() == 0) { /* child */
-    /* Real server would set all CGI vars here */
-    setenv("QUERY_STRING", cgiargs, 1);
-    Dup2(fd, STDOUT_FILENO);
-    /* Redirect stdout to client */
-    Execve(filename, emptylist, environ); /* Run CGI program */
+  if (Fork() == 0) { // This is the child
+    setenv("QUERY_STRING", cgiargs, 1);   // Real server would set all CGI vars here
+    Dup2(fd, STDOUT_FILENO);              // Redirect stdout to client
+    Execve(filename, emptylist, environ); // Run CGI program
   }
 
-  Wait(NULL); /* Parent waits for and reaps child */
+  // Parent waits for and reaps child
 
 }
 
@@ -415,9 +481,7 @@ int Open(const char *pathname, int flags, mode_t mode) {
   retint = open(pathname, flags, mode);
 
   if (retint < 0) {
-    
     unix_error("Open Error");
-
   }
 
   return retint;
@@ -452,9 +516,7 @@ pid_t Wait(int *status) {
   
   retpid = wait(status);
   if (retpid  < 0) {
-    
     unix_error("wait Error");
-
   }
   
   return retpid;
@@ -477,10 +539,8 @@ pid_t Fork()
 
   retpid = fork();
   
-  if (retpid < 0) {
-    
+  if (retpid < 0) {    
     unix_error("fork error");
-
   }
   
   return retpid;

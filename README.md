@@ -283,5 +283,3 @@ setenv("QUERY_STRING", cgiargs, 1);
 
 Read them with,
 buf = getenv("QUERY_STRING")
-
-

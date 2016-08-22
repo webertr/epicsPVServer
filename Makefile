@@ -11,7 +11,6 @@ vpath %.c  src
 vpath %.h  include
 
 PATH1=/usr/src/epics/base-3.15.3/lib/linux-x86_64
-OUT = lib/alib.a
 CC = gcc
 ODIR = obj
 SDIR = src
@@ -19,24 +18,30 @@ INC = -I$(INCLUDEDIR) -I/usr/src/epics/base-3.15.3/include -I/usr/src/epics/base
 LIBS = -lpthread -ldbCore -lca -lCom
 LIBSDIR = -L$(PATH1)
 
-_OBJS = simpleWebServer.o robustIO.o tool_lib.o cagetfuze.o
-OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
+_OBJS1 = simpleWebServer.o robustIO.o tool_lib.o
+OBJS1 = $(patsubst %,$(ODIR)/%,$(_OBJS1))
 
-all: pv_server adder camonitor
+_OBJS2 = pvDisplay.o tool_lib.o cagetfuze.o
+OBJS2 = $(patsubst %,$(ODIR)/%,$(_OBJS2))
 
-pv_server: $(OBJS)
-	$(CC) -o pv_server $(OBJS) $(INC) $(LIBSDIR) $(LIBS)
+_OBJS3 = adder.o
+OBJS3 = $(patsubst %,$(ODIR)/%,$(_OBJS3))
+
+all: pv_server adder pvDisplay
 
 $(ODIR)/%.o: $(SDIR)/%.c
 	$(CC) -c -o $@ $< $(INC)
 
 .PHONY: clean
 
-adder: $(SDIR)/adder.c
-	$(CC) -o cgi-bin/adder $(SDIR)/adder.c $(INC) $(LIBSDIR) $(LIBS)
+pv_server: $(OBJS1)
+	$(CC) -o pv_server $(OBJS1) $(INC) $(LIBSDIR) $(LIBS)
 
-camonitor: $(SDIR)/camonitor.c
-	$(CC) -o cgi-bin/camonitor $(SDIR)/camonitor.c $(INC) $(LIBSDIR) $(LIBS)
+pvDisplay: $(OBJS2)
+	$(CC) -o cgi-bin/pvDisplay $(OBJS2) $(INC) $(LIBSDIR) $(LIBS)
+
+adder: $(OBJS3)
+	$(CC) -o cgi-bin/adder $(OBJS3) $(INC) $(LIBSDIR) $(LIBS)
 
 clean:
 	rm -f $(ODIR)/*.o

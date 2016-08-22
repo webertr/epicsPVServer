@@ -32,6 +32,8 @@
 
 #include "tool_lib.h"
 
+#include <simpleWebServer.h>
+
 #define VALID_DOUBLE_DIGITS 18  /* Max usable precision for a double */
 
 static unsigned long reqElems = 0;
@@ -196,37 +198,35 @@ static void connection_handler ( struct connection_handler_args args )
 int main (void)
 {
 
-  char *buf, *p, *pvn_1, *pvn_2, argv[];
+  char *buf, *p, *pvn_1, *pvn_2, *argv[3];
   
   char arg1[MAXLINE], arg2[MAXLINE], content[MAXLINE];
 
   int argc=3;
   
-  if ((buf = getenv("QUERY_STRING")) != NULL) {  // Get arguments (2) set to environment variable,
-                                                 // QUERY_STRING
-    p = strchr(buf, '&');                        // Returns pointer to first occurence of & in string
-    *p = '\0';                                   // Puts an '\0' in place of '&'
-    strcpy(pvn_1, buf);                           // Copies string up to the the '\0'
-    strcpy(pvn_2, p+1);                           // Copies string after the '\0'
-  }
+  /* if ((buf = getenv("QUERY_STRING")) != NULL) {  // Get arguments (2) set to environment variable, */
+  /*                                                // QUERY_STRING */
+  /*   p = strchr(buf, '&');                        // Returns pointer to first occurence of & in string */
+  /*   *p = '\0';                                   // Puts an '\0' in place of '&' */
+  /*   strcpy(pvn_1, buf);                           // Copies string up to the the '\0' */
+  /*   strcpy(pvn_2, p+1);                           // Copies string after the '\0' */
+  /* } */
 
-  argv[2] = pvn_1;
-  argv[3] = pvn_2;
+  /* argv[2] = pvn_1; */
+  /* argv[3] = pvn_2; */
   
   // Make the response body
   // Put it all in char* content
-  sprintf(content, "Welcome to add.com: ");
-  sprintf(content, "%sTHE Internet addition portal.\r\n<p>", content);
-  sprintf(content, "%sThe answer is: %d + %d = %d\r\n<p>",
-	  content, n1, n2, n1 + n2);
-  sprintf(content, "%sThanks for visiting!\r\n", content);
+  //sprintf(content, "Welcome to add.com: ");
+  //sprintf(content, "%sTHE Internet addition portal.\r\n", content);
+  //sprintf(content, "%sThanks for visiting!\r\n", content);
 
   // Make the response body
   // Put it all in char* content
   sprintf(content, "Welcome to add.com: ");
   sprintf(content, "%sTHE Internet addition portal.\r\n<p>", content);
   sprintf(content, "%sThe answer is: %d + %d = %d\r\n<p>",
-	  content, 1, 1,  3);
+  	  content, 1, 1,  3);
   sprintf(content, "%sThanks for visiting!\r\n", content);
 
   int returncode = 0;
@@ -242,184 +242,184 @@ int main (void)
 
   LINE_BUFFER(stdout);        /* Configure stdout buffering */
 
-  while ((opt = getopt(argc, argv, ":nhm:sSe:f:g:l:#:0:w:t:p:F:")) != -1) {
-    switch (opt) {
-    case 'h':               /* Print usage */
-      usage();
-      return 0;
-    case 'n':               /* Print ENUM as index numbers */
-      enumAsNr=1;
-      break;
-    case 't':               /* Select timestamp source(s) and type */
-      tsSrcServer = 0;
-      tsSrcClient = 0;
-      {
-	int i = 0;
-	char c;
-	while ((c = optarg[i++]))
-	  switch (c) {
-	  case 's': tsSrcServer = 1; break;
-	  case 'c': tsSrcClient = 1; break;
-	  case 'n': break;
-	  case 'r': tsType = relative; break;
-	  case 'i': tsType = incremental; break;
-	  case 'I': tsType = incrementalByChan; break;
-	  default :
-	    sprintf(content, "Invalid argument '%c' "
-		    "for option '-t' - ignored.\n", c);
-	  }
-      }
-      break;
-    case 'w':               /* Set CA timeout value */
-      if(epicsScanDouble(optarg, &caTimeout) != 1)
-	{
-	  sprintf(content, "'%s' is not a valid timeout value "
-		  "- ignored. ('camonitor -h' for help.)\n", optarg);
-	  caTimeout = DEFAULT_TIMEOUT;
-	}
-      break;
-    case '#':               /* Array count */
-      if (sscanf(optarg,"%ld", &reqElems) != 1)
-	{
-	  sprintf(content, "'%s' is not a valid array element count "
-		  "- ignored. ('camonitor -h' for help.)\n", optarg);
-	  reqElems = 0;
-	}
-      break;
-    case 'p':               /* CA priority */
-      if (sscanf(optarg,"%u", &caPriority) != 1)
-	{
-	  sprintf(content, "'%s' is not a valid CA priority "
-		  "- ignored. ('camonitor -h' for help.)\n", optarg);
-	  caPriority = DEFAULT_CA_PRIORITY;
-	}
-      if (caPriority > CA_PRIORITY_MAX) caPriority = CA_PRIORITY_MAX;
-      break;
-    case 'm':               /* Select CA event mask */
-      eventMask = 0;
-      {
-	int i = 0;
-	char c, err = 0;
-	while ((c = optarg[i++]) && !err)
-	  switch (c) {
-	  case 'v': eventMask |= DBE_VALUE; break;
-	  case 'a': eventMask |= DBE_ALARM; break;
-	  case 'l': eventMask |= DBE_LOG; break;
-	  case 'p': eventMask |= DBE_PROPERTY; break;
-	  default :
-	    sprintf(content, "Invalid argument '%s' "
-		    "for option '-m' - ignored.\n", optarg);
-	    eventMask = DBE_VALUE | DBE_ALARM;
-	    err = 1;
-	  }
-      }
-      break;
-    case 's':               /* Select string dbr for floating type data */
-      floatAsString = 1;
-      break;
-    case 'S':               /* Treat char array as (long) string */
-      charArrAsStr = 1;
-      break;
-    case 'e':               /* Select %e/%f/%g format, using <arg> digits */
-    case 'f':
-    case 'g':
-      if (sscanf(optarg, "%d", &digits) != 1)
-	sprintf(content, 
-		"Invalid precision argument '%s' "
-		"for option '-%c' - ignored.\n", optarg, opt);
-      else
-	{
-	  if (digits>=0 && digits<=VALID_DOUBLE_DIGITS)
-	    sprintf(dblFormatStr, "%%-.%d%c", digits, opt);
-	  else
-	    sprintf(content, "Precision %d for option '-%c' "
-		    "out of range - ignored.\n", digits, opt);
-	}
-      break;
-    case 'l':               /* Convert to long and use integer format */
-    case '0':               /* Select integer format */
-      switch ((char) *optarg) {
-      case 'x': outType = hex; break;    /* x print Hex */
-      case 'b': outType = bin; break;    /* b print Binary */
-      case 'o': outType = oct; break;    /* o print Octal */
-      default :
-	outType = dec;
-	sprintf(content, "Invalid argument '%s' "
-		"for option '-%c' - ignored.\n", optarg, opt);
-      }
-      if (outType != dec) {
-	if (opt == '0') outTypeI = outType;
-	else            outTypeF = outType;
-      }
-      break;
-    case 'F':               /* Store this for output and tool_lib formatting */
-      fieldSeparator = (char) *optarg;
-      break;
-    case '?':
-      sprintf(content,
-	      "Unrecognized option: '-%c'. ('camonitor -h' for help.)\n",
-	      optopt);
-      return 1;
-    case ':':
-      sprintf(content,
-	      "Option '-%c' requires an argument. ('camonitor -h' for help.)\n",
-	      optopt);
-      return 1;
-    default :
-      usage();
-      return 1;
-    }
-  }
+  /* while ((opt = getopt(argc, argv, ":nhm:sSe:f:g:l:#:0:w:t:p:F:")) != -1) { */
+  /*   switch (opt) { */
+  /*   case 'h':               /\* Print usage *\/ */
+  /*     usage(); */
+  /*     return 0; */
+  /*   case 'n':               /\* Print ENUM as index numbers *\/ */
+  /*     enumAsNr=1; */
+  /*     break; */
+  /*   case 't':               /\* Select timestamp source(s) and type *\/ */
+  /*     tsSrcServer = 0; */
+  /*     tsSrcClient = 0; */
+  /*     { */
+  /* 	int i = 0; */
+  /* 	char c; */
+  /* 	while ((c = optarg[i++])) */
+  /* 	  switch (c) { */
+  /* 	  case 's': tsSrcServer = 1; break; */
+  /* 	  case 'c': tsSrcClient = 1; break; */
+  /* 	  case 'n': break; */
+  /* 	  case 'r': tsType = relative; break; */
+  /* 	  case 'i': tsType = incremental; break; */
+  /* 	  case 'I': tsType = incrementalByChan; break; */
+  /* 	  default : */
+  /* 	    sprintf(content, "Invalid argument '%c' " */
+  /* 		    "for option '-t' - ignored.\n", c); */
+  /* 	  } */
+  /*     } */
+  /*     break; */
+  /*   case 'w':               /\* Set CA timeout value *\/ */
+  /*     if(epicsScanDouble(optarg, &caTimeout) != 1) */
+  /* 	{ */
+  /* 	  sprintf(content, "'%s' is not a valid timeout value " */
+  /* 		  "- ignored. ('camonitor -h' for help.)\n", optarg); */
+  /* 	  caTimeout = DEFAULT_TIMEOUT; */
+  /* 	} */
+  /*     break; */
+  /*   case '#':               /\* Array count *\/ */
+  /*     if (sscanf(optarg,"%ld", &reqElems) != 1) */
+  /* 	{ */
+  /* 	  sprintf(content, "'%s' is not a valid array element count " */
+  /* 		  "- ignored. ('camonitor -h' for help.)\n", optarg); */
+  /* 	  reqElems = 0; */
+  /* 	} */
+  /*     break; */
+  /*   case 'p':               /\* CA priority *\/ */
+  /*     if (sscanf(optarg,"%u", &caPriority) != 1) */
+  /* 	{ */
+  /* 	  sprintf(content, "'%s' is not a valid CA priority " */
+  /* 		  "- ignored. ('camonitor -h' for help.)\n", optarg); */
+  /* 	  caPriority = DEFAULT_CA_PRIORITY; */
+  /* 	} */
+  /*     if (caPriority > CA_PRIORITY_MAX) caPriority = CA_PRIORITY_MAX; */
+  /*     break; */
+  /*   case 'm':               /\* Select CA event mask *\/ */
+  /*     eventMask = 0; */
+  /*     { */
+  /* 	int i = 0; */
+  /* 	char c, err = 0; */
+  /* 	while ((c = optarg[i++]) && !err) */
+  /* 	  switch (c) { */
+  /* 	  case 'v': eventMask |= DBE_VALUE; break; */
+  /* 	  case 'a': eventMask |= DBE_ALARM; break; */
+  /* 	  case 'l': eventMask |= DBE_LOG; break; */
+  /* 	  case 'p': eventMask |= DBE_PROPERTY; break; */
+  /* 	  default : */
+  /* 	    sprintf(content, "Invalid argument '%s' " */
+  /* 		    "for option '-m' - ignored.\n", optarg); */
+  /* 	    eventMask = DBE_VALUE | DBE_ALARM; */
+  /* 	    err = 1; */
+  /* 	  } */
+  /*     } */
+  /*     break; */
+  /*   case 's':               /\* Select string dbr for floating type data *\/ */
+  /*     floatAsString = 1; */
+  /*     break; */
+  /*   case 'S':               /\* Treat char array as (long) string *\/ */
+  /*     charArrAsStr = 1; */
+  /*     break; */
+  /*   case 'e':               /\* Select %e/%f/%g format, using <arg> digits *\/ */
+  /*   case 'f': */
+  /*   case 'g': */
+  /*     if (sscanf(optarg, "%d", &digits) != 1) */
+  /* 	sprintf(content, */
+  /* 		"Invalid precision argument '%s' " */
+  /* 		"for option '-%c' - ignored.\n", optarg, opt); */
+  /*     else */
+  /* 	{ */
+  /* 	  if (digits>=0 && digits<=VALID_DOUBLE_DIGITS) */
+  /* 	    sprintf(dblFormatStr, "%%-.%d%c", digits, opt); */
+  /* 	  else */
+  /* 	    sprintf(content, "Precision %d for option '-%c' " */
+  /* 		    "out of range - ignored.\n", digits, opt); */
+  /* 	} */
+  /*     break; */
+  /*   case 'l':               /\* Convert to long and use integer format *\/ */
+  /*   case '0':               /\* Select integer format *\/ */
+  /*     switch ((char) *optarg) { */
+  /*     case 'x': outType = hex; break;    /\* x print Hex *\/ */
+  /*     case 'b': outType = bin; break;    /\* b print Binary *\/ */
+  /*     case 'o': outType = oct; break;    /\* o print Octal *\/ */
+  /*     default : */
+  /* 	outType = dec; */
+  /* 	sprintf(content, "Invalid argument '%s' " */
+  /* 		"for option '-%c' - ignored.\n", optarg, opt); */
+  /*     } */
+  /*     if (outType != dec) { */
+  /* 	if (opt == '0') outTypeI = outType; */
+  /* 	else            outTypeF = outType; */
+  /*     } */
+  /*     break; */
+  /*   case 'F':               /\* Store this for output and tool_lib formatting *\/ */
+  /*     fieldSeparator = (char) *optarg; */
+  /*     break; */
+  /*   case '?': */
+  /*     sprintf(content, */
+  /* 	      "Unrecognized option: '-%c'. ('camonitor -h' for help.)\n", */
+  /* 	      optopt); */
+  /*     return 1; */
+  /*   case ':': */
+  /*     sprintf(content, */
+  /* 	      "Option '-%c' requires an argument. ('camonitor -h' for help.)\n", */
+  /* 	      optopt); */
+  /*     return 1; */
+  /*   default : */
+  /*     usage(); */
+  /*     return 1; */
+  /*   } */
 
-  nPvs = argc - optind;       /* Remaining arg list are PV names */
+  /* } */
 
-  if (nPvs < 1)
-    {
-      sprintf(content, "No pv name specified. ('camonitor -h' for help.)\n");
-      return 1;
-    }
-  /* Start up Channel Access */
+  /* nPvs = argc - optind;       /\* Remaining arg list are PV names *\/ */
 
-  result = ca_context_create(ca_disable_preemptive_callback);
-  if (result != ECA_NORMAL) {
-    sprintf(content, "CA error %s occurred while trying "
-	    "to start channel access.\n", ca_message(result));
-    return 1;
-  }
-  /* Allocate PV structure array */
+  /* if (nPvs < 1) */
+  /*   { */
+  /*     sprintf(content, "No pv name specified. ('camonitor -h' for help.)\n"); */
+  /*     return 1; */
+  /*   } */
+  /* /\* Start up Channel Access *\/ */
 
-  pvs = calloc (nPvs, sizeof(pv));
-  if (!pvs)
-    {
-      sprintf(content, "Memory allocation for channel structures failed.\n");
-      return 1;
-    }
-  /* Connect channels */
+  /* result = ca_context_create(ca_disable_preemptive_callback); */
+  /* if (result != ECA_NORMAL) { */
+  /*   sprintf(content, "CA error %s occurred while trying " */
+  /* 	    "to start channel access.\n", ca_message(result)); */
+  /*   return 1; */
+  /* } */
+  /* /\* Allocate PV structure array *\/ */
 
-  /* Copy PV names from command line */
-  for (n = 0; optind < argc; n++, optind++)
-    {
-      pvs[n].name   = argv[optind];
-    }
-  /* Create CA connections */
-  returncode = create_pvs(pvs, nPvs, connection_handler);
-  if ( returncode ) {
-    return returncode;
-  }
-  /* Check for channels that didn't connect */
-  ca_pend_event(caTimeout);
-  for (n = 0; n < nPvs; n++)
-    {
-      if (!pvs[n].onceConnected)
-	print_time_val_sts(&pvs[n], reqElems);
-    }
+  /* pvs = calloc (nPvs, sizeof(pv)); */
+  /* if (!pvs) */
+  /*   { */
+  /*     sprintf(content, "Memory allocation for channel structures failed.\n"); */
+  /*     return 1; */
+  /*   } */
+  /* /\* Connect channels *\/ */
 
-  /* Read and print data forever */
-  ca_pend_event(0);
+  /* /\* Copy PV names from command line *\/ */
+  /* for (n = 0; optind < argc; n++, optind++) */
+  /*   { */
+  /*     pvs[n].name   = argv[optind]; */
+  /*   } */
+  /* /\* Create CA connections *\/ */
+  /* returncode = create_pvs(pvs, nPvs, connection_handler); */
+  /* if ( returncode ) { */
+  /*   return returncode; */
+  /* } */
+  /* /\* Check for channels that didn't connect *\/ */
+  /* ca_pend_event(caTimeout); */
+  /* for (n = 0; n < nPvs; n++) */
+  /*   { */
+  /*     if (!pvs[n].onceConnected) */
+  /* 	print_time_val_sts(&pvs[n], reqElems); */
+  /*   } */
 
-  /* Shut down Channel Access */
-  ca_context_destroy();
+  /* /\* Read and print data forever *\/ */
+  /* ca_pend_event(0); */
 
+  /* /\* Shut down Channel Access *\/ */
+  /* ca_context_destroy(); */
 
   // Generate the HTTP response
   // Output content to the standard output (stdout), which has been re-directed to the connection

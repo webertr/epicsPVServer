@@ -27,7 +27,7 @@ OBJS2 = $(patsubst %,$(ODIR)/%,$(_OBJS2))
 _OBJS3 = adder.o
 OBJS3 = $(patsubst %,$(ODIR)/%,$(_OBJS3))
 
-all: pv_server adder pvDisplay
+all: pv_server cgi-bin/adder cgi-bin/pvDisplay
 
 $(ODIR)/%.o: $(SDIR)/%.c
 	$(CC) -c -o $@ $< $(INC)
@@ -37,10 +37,10 @@ $(ODIR)/%.o: $(SDIR)/%.c
 pv_server: $(OBJS1)
 	$(CC) -o pv_server $(OBJS1) $(INC) $(LIBSDIR) $(LIBS)
 
-pvDisplay: $(OBJS2)
+cgi-bin/pvDisplay: $(OBJS2)
 	$(CC) -o cgi-bin/pvDisplay $(OBJS2) $(INC) $(LIBSDIR) $(LIBS)
 
-adder: $(OBJS3)
+cgi-bin/adder: $(OBJS3)
 	$(CC) -o cgi-bin/adder $(OBJS3) $(INC) $(LIBSDIR) $(LIBS)
 
 clean:

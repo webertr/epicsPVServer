@@ -3,10 +3,15 @@
  * by a server
  ***************************************************************************/
 
-#include <simpleWebServer.h> // Header file that contains everything that will be needed
+#include <simpleWebServer.h> // Header file that contains MAXLINE definition
 
+#define EPICS_PV_NAME_LEN 72  // Maximum length of a PV name
+#define EPICS_PV_VAL_LEN 100   // Sets length of char array to pass to cagetfuze. Could it be longer
+                              // then this? I don't know. If it isn't long enough, you get an error
+                              // from cagetfuze: conect timed out: '3\n' not found.
 
-void cagetFuZE(char *pvName, char *pvValue);
+void cagetFuZE(char *pvName, char *pvValue); // Declaration for function called from cagetfuze.c
+
 
 /******************************************************************************
  * Function: main
@@ -18,19 +23,22 @@ void cagetFuZE(char *pvName, char *pvValue);
 
 int main(void) {
 
-  char arg1[MAXLINE], arg2[MAXLINE], content[MAXLINE], pvn_1[36], pvn_2[36], val1[10], val2[20];
-  char *p, *buf;
+  char arg1[MAXLINE], arg2[MAXLINE], content[MAXLINE],
+    pvn_1[EPICS_PV_NAME_LEN], pvn_2[EPICS_PV_NAME_LEN],
+    val1[EPICS_PV_VAL_LEN], val2[EPICS_PV_VAL_LEN];     // Need to allocate memory for cagetfuze
+  char *p, *buf;                                        // No need to allocate memory b/c the getenv
+                                                        // Does that for you
 
   if ((buf = getenv("QUERY_STRING")) != NULL) {  // Get arguments (2) set to environment variable,
                                                  // QUERY_STRING
     p = strchr(buf, '&');                        // Returns pointer to first occurence of & in string
     *p = '\0';                                   // Puts an '\0' in place of '&'
-    strcpy(pvn_1, buf);                           // Copies string up to the the '\0'
-    strcpy(pvn_2, p+1);                           // Copies string after the '\0'
+    strcpy(pvn_1, buf);                          // Copies string up to the the '\0'
+    strcpy(pvn_2, p+1);                          // Copies string after the '\0'
   }
 
-  cagetFuZE(pvn_1, val1);
-  cagetFuZE(pvn_2, val2);
+  cagetFuZE(pvn_1, val1);  // Get pvn_1's value, and puts it in the char array , val1
+  cagetFuZE(pvn_2, val2);  // Get pvn_2's value, and puts it in the char array , val2
     
   // Make the response body
   // Put it all in char* content

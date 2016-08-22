@@ -1,4 +1,11 @@
-/*************************************************************************\
+/****************************************************************************
+ * cagetfuze.c - This is pulled from Ralph Lange's code for the caget EPICS tool.
+ * I made some crude modifications (emphasis on the word crude), so that I 
+ * could call the function cagetfuze(), and have it return PV values
+ ***************************************************************************/
+
+
+/************************************************************************* \
 * Copyright (c) 2009 Helmholtz-Zentrum Berlin fuer Materialien und Energie.
 * Copyright (c) 2006 Diamond Light Source Ltd.
 * Copyright (c) 2002 The University of Chicago, as Operator of Argonne
@@ -26,6 +33,7 @@
  *
  */
 
+
 #include <stdio.h>
 #include <string.h>
 #include <epicsStdlib.h>
@@ -36,7 +44,6 @@
 #include <epicsGetopt.h>
 
 #include <tool_lib.h>
-#include <myfunctions.h>
 
 #define VALID_DOUBLE_DIGITS 18  /* Max usable precision for a double */
 #define PEND_EVENT_SLICES 5     /* No. of pend_event slices for callback requests */
@@ -56,16 +63,17 @@ static int floatAsString = 0;   /* Flag: fetch floats as string */
 
 
 
-/*+**************************************************************************
+/***************************************************************************
  *
  * Function:event_handler
  *
  * Description:CA event_handler for request type callback
- * Allocates the dbr structure and copies the data
+ * Allocates the dbr structure and copies the data.
+ * This came with the source code. It is static so won't pollute anything else
  *
  * Arg(s) In:args  -  event handler args (see CA manual)
  *
- **************************************************************************-*/
+ ***************************************************************************/
 
 static void event_handler (evargs args)
 {
@@ -84,27 +92,17 @@ static void event_handler (evargs args)
 
 
 
-
-
-
-/*+**************************************************************************
- *
- * Function:	cagetFuZE
- *
- * Description:	Issue read requests, wait for incoming data
- * 		and print the data according to the selected format
- *
- * Arg(s) In:	pvs       -  Pointer to an array of pv structures
- *              nPvs      -  Number of elements in the pvs array
- *              request   -  Request type
- *              format    -  Output format
- *              dbrType   -  Requested dbr type
- *              reqElems  -  Requested number of (array) elements
- *
- * Return(s):	Error code: 0 = OK, 1 = Error
- *
- **************************************************************************-*/
-
+/******************************************************************************
+ * Function: cagetFuZE
+ * Inputs: char *, char*
+ * Returns: None
+ * Description: This is a crude modification to the caget command line tool.
+ * I have changed it so you pass it a pvName, and a char pointer for the pv value
+ * (or what ascii text would be ouput to the command line. It will then update
+ * the char pointer pvValue to what would be output to the console by caget.
+ * I don't know anything about character limits, so I'm unsure about the size of pvValue
+ * HOW MUCH MEMORY TO ALLOCATE TO PVVALUE?????
+ ******************************************************************************/
 
 void cagetFuZE(char *pvName, char *pvValue) {
 

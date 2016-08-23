@@ -10,7 +10,7 @@
                               // then this? I don't know. If it isn't long enough, you get an error
                               // from cagetfuze: conect timed out: '3\n' not found.
 
-void cagetFuZE(char *pvName, char *pvValue); // Declaration for function called from cagetfuze.c
+int cagetFuZE(char *pvName, char *pvValue); // Declaration for function called from cagetfuze.c
 
 
 /******************************************************************************
@@ -37,9 +37,15 @@ int main(void) {
     strcpy(pvn_2, p+1);                          // Copies string after the '\0'
   }
 
-  cagetFuZE(pvn_1, val1);  // Get pvn_1's value, and puts it in the char array , val1
-  cagetFuZE(pvn_2, val2);  // Get pvn_2's value, and puts it in the char array , val2
-    
+  if (cagetFuZE(pvn_1, val1) == -1) {   // Get pvn_1's value, and puts it in the char array , val1
+    strncpy(val1, "Error", EPICS_PV_VAL_LEN);
+    val1[EPICS_PV_VAL_LEN-1] = '\0';
+  }
+  if (cagetFuZE(pvn_2, val2) == -1) {  // Get pvn_2's value, and puts it in the char array , val2
+    strncpy(val2, "Error", EPICS_PV_VAL_LEN);
+    val2[EPICS_PV_VAL_LEN-1] = '\0';
+  }
+  
   // Make the response body
   // Put it all in char* content
   sprintf(content, "Welcome to add.com: ");

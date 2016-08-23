@@ -95,7 +95,7 @@ static void event_handler (evargs args)
 /******************************************************************************
  * Function: cagetFuZE
  * Inputs: char *, char*
- * Returns: None
+ * Returns: int (1 if successful, -1 if error)
  * Description: This is a crude modification to the caget command line tool.
  * I have changed it so you pass it a pvName, and a char pointer for the pv value
  * (or what ascii text would be ouput to the command line. It will then update
@@ -104,7 +104,7 @@ static void event_handler (evargs args)
  * HOW MUCH MEMORY TO ALLOCATE TO PVVALUE?????
  ******************************************************************************/
 
-void cagetFuZE(char *pvName, char *pvValue) {
+int cagetFuZE(char *pvName, char *pvValue) {
 
   RequestT request = get;
   OutputT format = plain;
@@ -114,6 +114,7 @@ void cagetFuZE(char *pvName, char *pvValue) {
   pv* pvs;
   int i;
   unsigned long nElems;
+  
 
   result = ca_context_create(ca_disable_preemptive_callback);
 
@@ -171,7 +172,7 @@ void cagetFuZE(char *pvName, char *pvValue) {
   	  pvs[n].value = calloc(1, dbr_size_n(pvs[n].dbrType, pvs[n].nElems));
 	  if (!pvs[n].value) {
   	    fprintf(stderr,"Memory allocation failed\n");
-  	    return;
+  	    return -1;
   	  }
   	  result = ca_array_get(pvs[n].dbrType,
   				pvs[n].nElems,
@@ -184,14 +185,16 @@ void cagetFuZE(char *pvName, char *pvValue) {
     }
   }
 
-  if (!nConn) return;              /* No connection? We're done. */
+  if (!nConn) return -1;              /* No connection? We're done. */
 
   /* Wait for completion */
   /* ------------------- */
 
   result = ca_pend_io(caTimeout);
-  if (result == ECA_TIMEOUT)
+  if (result == ECA_TIMEOUT) {
     fprintf(stderr, "Read operation timed out: some PV data was not read.\n");
+    return -1;
+  }
 
   if (request == callback)    /* Also wait for callbacks */
     {
@@ -203,21 +206,24 @@ void cagetFuZE(char *pvName, char *pvValue) {
 	      ca_pend_event(slice);
 	      if (nRead >= nConn) break;
             }
-	  if (nRead < nConn)
+	  if (nRead < nConn) {
 	    fprintf(stderr, "Read operation timed out: some PV data was not read.\n");
-        } else {
+	    return -1;
+	  }
+	} else {
 	/* For 0 timeout keep waiting until all are done */
-	while (nRead < nConn) {
-	  ca_pend_event(1.0);
-	}
+	    while (nRead < nConn) {
+	      ca_pend_event(1.0);
+	    }
       }
     }
+
 
   // Does this kill the connection??
   ca_context_destroy();
   
   sprintf(pvValue, "%s\n", val2str(pvs[0].value, pvs[0].dbrType, 0));
 
-  return;
+  return 1;
 
 }

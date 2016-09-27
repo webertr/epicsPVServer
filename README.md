@@ -1,3 +1,13 @@
+To access this site, just run this in a command line:
+./pv_server 3490
+Then, type into your web browser the following:
+http://10.10.10.248:3490/var/index.html
+Assuming 3490 is the port you want, and the IP of your machine is 10.10.10.248.
+
+
+
+
+
 I had to go into /etc/ld.so.conf.d/
 and add a file called "epics.conf" with the line,
 root@fuze2:/etc/ld.so.conf.d# more epics.conf

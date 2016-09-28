@@ -41,20 +41,22 @@ int main(void) {
     strncpy(val1, "Error", EPICS_PV_VAL_LEN);
     val1[EPICS_PV_VAL_LEN-1] = '\0';
   }
-  if (cagetFuZE(pvn_2, val2) == -1) {  // Get pvn_2's value, and puts it in the char array , val2
-    strncpy(val2, "Error", EPICS_PV_VAL_LEN);
-    val2[EPICS_PV_VAL_LEN-1] = '\0';
-  }
+  /* if (cagetFuZE(pvn_2, val2) == -1) {  // Get pvn_2's value, and puts it in the char array , val2 */
+  /*   strncpy(val2, "Error", EPICS_PV_VAL_LEN); */
+  /*   val2[EPICS_PV_VAL_LEN-1] = '\0'; */
+  /* } */
   
   // Make the response body
   // Put it all in char* content
-  sprintf(content, "Welcome to add.com: ");
-  sprintf(content, "%sTHE Internet addition portal.\r\n<p>", content);
-  sprintf(content, "%sPV fred1 is: %s\r\n<p>",
-	  content, val1);
-  sprintf(content, "%sPV fred2 is: %s\r\n<p>",
-	  content, val2);
-  sprintf(content, "%sThanks for visiting!\r\n", content);
+  sprintf(content, "The Pressure in the Main Chamber is: %s Torr\r\n<p>",val1);
+  /*
+  /* sprintf(content, "FuZE Ion Gauge in Main Chamber: "); */
+  /* sprintf(content, "%sTHE Internet addition portal.\r\n<p>", content); */
+  /* sprintf(content, "%sPV fred1: %s\r\n<p>", */
+  /* 	  content, val1); */
+  /* sprintf(content, "%sPV fred2 is: %s\r\n<p>", */
+  /* 	  content, val2); */
+  /* sprintf(content, "%sThanks for visiting!\r\n", content); */
 
   
   // Generate the HTTP response
